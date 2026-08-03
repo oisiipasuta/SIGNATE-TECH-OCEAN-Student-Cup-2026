@@ -1,0 +1,2 @@
+# SIGNATE-TECH-OCEAN-Student-Cup-2026
+SIGNATEのデータコンペやろう
