@@ -1,23 +1,23 @@
 """
-実験ID: exp4
+実験ID: exp04
 実験名: 業界特徴量の有無・低重要度カテゴリ統合の比較
 著者: oisiipasuta
 
 目的・仮説:
 - 業界ダミーが汎化性能を改善するか、同一のネステッドCV分割で比較する。
-- Exp4-Aは業界ダミーあり、Exp4-Bは業界特徴量なし、Exp4-Cは過去のexp1重要度で
+- Exp04-Aは業界ダミーあり、Exp04-Bは業界特徴量なし、Exp04-Cは過去のexp1重要度で
   「業界_化学」より下だったカテゴリを「その他」に統合する。
-- Exp4-Dは「業界_機械」以下（機械を含む）を「その他」に統合する。
+- Exp04-Dは「業界_機械」以下（機械を含む）を「その他」に統合する。
 - Aの平均F1が高くてもfold間標準偏差が大きい場合は、少数業界への過適合を疑う。
 
-Exp4-Cの事前固定ルール:
+Exp04-Cの事前固定ルール:
 - 個別に残す業界: 自動車・乗り物、IT、建設・工事、商社、機械、運輸・物流、
   医療・福祉、化学。
 - 上記以外の業界は「その他」に統合する。
 - このルールはexp1の重要度順位から実験前に固定し、今回の目的変数やCV結果から
   選び直さない。
 
-Exp4-Dの事前固定ルール:
+Exp04-Dの事前固定ルール:
 - 個別に残す業界: 自動車・乗り物、IT、建設・工事、商社。
 - 機械および重要度順位が機械より下の業界は「その他」に統合する。
 
@@ -34,25 +34,25 @@ Exp4-Dの事前固定ルール:
 - 最終閾値は5個のouter fold閾値の平均とする。
 
 出力:
-- experiments/results/exp4/feature_importance.png
-- experiments/results/exp4/f1_scores.png
+- experiments/exp_base/results/exp04/feature_importance.png
+- experiments/exp_base/results/exp04/f1_scores.png
 - CSV/JSON、予測値、submissionは出力しない。
 
-実行結果（2026-08-09、Exp4-D追加後）:
+実行結果（2026-08-09、Exp04-D追加後）:
 - 入力特徴量数: A=22、B=21、C=22、D=22。
 - 変換後特徴量数: A=55、B=24、C=33、D=29。
 - 全欠損のため除外した特徴量: 人材不足フラグ、予算制約フラグ、組織部門数、
   組織階層数、業務種類数、現場課題数、システム刷新フラグ、導入時期フラグ。
-- Exp4-A: fold閾値=0.275/0.235/0.285/0.375/0.340、
+- Exp04-A: fold閾値=0.275/0.235/0.285/0.375/0.340、
   fold F1=0.6098/0.6835/0.6410/0.7200/0.6269、平均=0.6562、標準偏差=0.0402、
   nested OOF F1=0.6562、最終閾値=0.3020。
-- Exp4-B: fold閾値=0.315/0.220/0.280/0.230/0.130、
+- Exp04-B: fold閾値=0.315/0.220/0.280/0.230/0.130、
   fold F1=0.5385/0.7407/0.6279/0.6437/0.7021、平均=0.6506、標準偏差=0.0692、
   nested OOF F1=0.6526、最終閾値=0.2350。
-- Exp4-C: fold閾値=0.270/0.300/0.220/0.375/0.330、
+- Exp04-C: fold閾値=0.270/0.300/0.220/0.375/0.330、
   fold F1=0.6118/0.7397/0.5909/0.7200/0.6849、平均=0.6695、標準偏差=0.0587、
   nested OOF F1=0.6650、最終閾値=0.2990。
-- Exp4-D: fold閾値=0.270/0.270/0.310/0.435/0.270、
+- Exp04-D: fold閾値=0.270/0.270/0.310/0.435/0.270、
   fold F1=0.6420/0.6933/0.6133/0.6667/0.7397、平均=0.6710、標準偏差=0.0434、
   nested OOF F1=0.6702、最終閾値=0.3110。
 - 解釈: Dは平均F1とnested OOF F1が4条件中で最高。標準偏差もCの0.0587から
@@ -77,7 +77,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -92,13 +92,13 @@ from calc_features.purchase_timing import calculate_purchase_timing_features
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp4"
+EXPERIMENT_ID = "exp04"
 EXPERIMENT_NAME = "industry feature ablation and category grouping"
 TARGET_COLUMN = "購入フラグ"
 INDUSTRY_COLUMN = "業界"
 OTHER_INDUSTRY_LABEL = "その他"
 
-# exp1の平均split importanceで「業界_化学」以上だったカテゴリを事前固定する。
+# exp01の平均split importanceで「業界_化学」以上だったカテゴリを事前固定する。
 RETAINED_INDUSTRIES_C = frozenset(
     {
         "自動車・乗り物",
@@ -112,7 +112,7 @@ RETAINED_INDUSTRIES_C = frozenset(
     }
 )
 
-# exp1の平均split importanceで「業界_機械」より上だったカテゴリだけを残す。
+# exp01の平均split importanceで「業界_機械」より上だったカテゴリだけを残す。
 RETAINED_INDUSTRIES_D = frozenset(
     {
         "自動車・乗り物",
@@ -123,10 +123,10 @@ RETAINED_INDUSTRIES_D = frozenset(
 )
 
 CONDITIONS = {
-    "Exp4-A": "業界ダミーあり",
-    "Exp4-B": "業界特徴量なし",
-    "Exp4-C": "化学より下をその他に統合",
-    "Exp4-D": "機械以下をその他に統合",
+    "Exp04-A": "業界ダミーあり",
+    "Exp04-B": "業界特徴量なし",
+    "Exp04-C": "化学より下をその他に統合",
+    "Exp04-D": "機械以下をその他に統合",
 }
 
 MODEL_PARAMS = {
@@ -145,7 +145,7 @@ THRESHOLD_CANDIDATES = np.linspace(0.05, 0.95, 181)
 
 TRAIN_PATH = BASE_DIR / "data" / "train.csv"
 TEST_PATH = BASE_DIR / "data" / "test.csv"
-RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
+RESULT_DIR = BASE_DIR / "experiments" / "exp_base" / "results" / EXPERIMENT_ID
 
 
 # ==================================================
@@ -153,7 +153,7 @@ RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
 # ==================================================
 
 def calculate_features(df: pd.DataFrame) -> pd.DataFrame:
-    """exp1と同じ5つの特徴量生成関数を、同じ順序で適用する。"""
+    """exp01と同じ5つの特徴量生成関数を、同じ順序で適用する。"""
     feature_frames = [
         calculate_execution_features(df),
         calculate_motivation_features(df),
@@ -182,19 +182,19 @@ def prepare_base_features(
 def apply_condition(features: pd.DataFrame, condition: str) -> pd.DataFrame:
     """A/B/C/Dの業界特徴量ルールを適用したコピーを返す。"""
     result = features.copy()
-    if condition == "Exp4-B":
+    if condition == "Exp04-B":
         return result.drop(columns=[INDUSTRY_COLUMN])
-    if condition in {"Exp4-C", "Exp4-D"}:
+    if condition in {"Exp04-C", "Exp04-D"}:
         retained_industries = (
             RETAINED_INDUSTRIES_C
-            if condition == "Exp4-C"
+            if condition == "Exp04-C"
             else RETAINED_INDUSTRIES_D
         )
         industry = result[INDUSTRY_COLUMN].astype("string")
         result[INDUSTRY_COLUMN] = industry.where(
             industry.isin(retained_industries), OTHER_INDUSTRY_LABEL
         )
-    elif condition != "Exp4-A":
+    elif condition != "Exp04-A":
         raise ValueError(f"未知の比較条件です: {condition}")
     return result
 
@@ -577,8 +577,8 @@ def main() -> None:
     print(f"Japanese plot font: {font_name}")
     print(f"Positive rate: {y.mean():.4%}")
     print(f"Base input features: {len(base_train.columns)}; excluded all-missing: {excluded}")
-    print(f"Exp4-C retained industries: {sorted(RETAINED_INDUSTRIES_C)}")
-    print(f"Exp4-D retained industries: {sorted(RETAINED_INDUSTRIES_D)}")
+    print(f"Exp04-C retained industries: {sorted(RETAINED_INDUSTRIES_C)}")
+    print(f"Exp04-D retained industries: {sorted(RETAINED_INDUSTRIES_D)}")
     for condition in CONDITIONS:
         X, _, _ = feature_sets[condition]
         result = results_by_condition[condition]

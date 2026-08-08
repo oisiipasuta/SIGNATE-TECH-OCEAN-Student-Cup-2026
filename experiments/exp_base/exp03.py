@@ -1,10 +1,10 @@
 """
-実験ID: exp3
+実験ID: exp03
 実験名: 重複特徴量の除外
 著者: oisiipasuta
 
 実験概要:
-- Exp1と同じ特徴量生成・LightGBM・ネストCV条件を維持する。
+- Exp01と同じ特徴量生成・LightGBM・ネストCV条件を維持する。
 - 同じ情報を表す候補として、従業員規模、現行ツール状態、
   赤字・CF不足フラグを除外し、特徴量削減後のF1をExp1と比較する。
 - log_売上とlog_従業員数は互いに異なる企業規模情報なので維持する。
@@ -29,22 +29,22 @@
 - 最終thresholdは外側fold閾値の平均とする。
 
 出力:
-- experiments/results/exp3/feature_importance.png
-- experiments/results/exp3/f1_scores.png
+- experiments/exp_base/results/exp03/feature_importance.png
+- experiments/exp_base/results/exp03/f1_scores.png
 - CSV、JSON、予測値、提出ファイルは出力しない。
 
 結果（2026-08-08実行）:
-- 使用特徴量数: 19（Exp1は22）
-- One-Hot後特徴量数: 49（Exp1は55）
+- 使用特徴量数: 19（Exp01は22）
+- One-Hot後特徴量数: 49（Exp01は55）
 - 全行欠損による除外: 人材不足フラグ、予算制約フラグ、組織部門数、
   組織階層数、業務種類数、現場課題数、システム刷新フラグ、導入時期フラグ
 - 重複候補として除外: 従業員規模、現行ツール状態、赤字・CF不足フラグ
 - fold threshold: 0.310, 0.235, 0.220, 0.155, 0.245
 - fold F1: 0.6234, 0.7000, 0.6067, 0.6737, 0.7342
 - fold F1 mean ± std: 0.6676 ± 0.0473
-- nested OOF F1: 0.6667（Exp1は0.6562、差+0.0105）
+- nested OOF F1: 0.6667（Exp01は0.6562、差+0.0105）
 - 最終threshold: 0.2330
-- 特徴量を削減してF1が同等以上だったため、Exp3を採用候補とする。
+- 特徴量を削減してF1が同等以上だったため、Exp03を採用候補とする。
 """
 
 from __future__ import annotations
@@ -64,8 +64,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-# `python experiments/exp3.py` で実行してもリポジトリ直下をimportできるようにする。
-BASE_DIR = Path(__file__).resolve().parent.parent
+# `python experiments/exp_base/exp03.py` で実行してもリポジトリ直下をimportできるようにする。
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -80,7 +80,7 @@ from calc_features.purchase_timing import calculate_purchase_timing_features
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp3"
+EXPERIMENT_ID = "exp03"
 EXPERIMENT_NAME = "重複特徴量の除外"
 AUTHOR = "oisiipasuta"
 
@@ -107,7 +107,7 @@ DUPLICATE_FEATURES = [
 
 TRAIN_PATH = BASE_DIR / "data" / "train.csv"
 TEST_PATH = BASE_DIR / "data" / "test.csv"
-RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
+RESULT_DIR = BASE_DIR / "experiments" / "exp_base" / "results" / EXPERIMENT_ID
 
 
 # ==================================================
@@ -115,7 +115,7 @@ RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
 # ==================================================
 
 def calculate_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Exp1と同じ5モジュールの特徴量を生成する。"""
+    """Exp01と同じ5モジュールの特徴量を生成する。"""
     return pd.concat(
         [
             calculate_execution_features(df),
@@ -352,7 +352,7 @@ def plot_feature_importance(feature_importance: pd.DataFrame) -> None:
         color="#2F6B8A",
     )
     ax.bar_label(bars, fmt="%.1f", padding=3, fontsize=8)
-    ax.set_title("Exp3 特徴量重要度", fontsize=16, fontweight="bold", pad=28)
+    ax.set_title("Exp03 特徴量重要度", fontsize=16, fontweight="bold", pad=28)
     ax.text(
         0.5,
         1.01,
@@ -400,7 +400,7 @@ def plot_f1_scores(
         va="top",
         bbox={"boxstyle": "round,pad=0.45", "facecolor": "white", "edgecolor": "#9CA3AF"},
     )
-    ax.set_title("Exp3 外側検証fold別 F1", fontsize=16, fontweight="bold", pad=30)
+    ax.set_title("Exp03 外側検証fold別 F1", fontsize=16, fontweight="bold", pad=30)
     ax.text(
         0.5,
         1.01,

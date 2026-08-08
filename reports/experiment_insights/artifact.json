@@ -1,0 +1,288 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "特徴量実験から得られた示唆",
+    "description": "LightGBMベース特徴量とDX展望テキスト特徴量の実験結果を比較した技術レポート",
+    "generatedAt": "2026-08-09T03:18:31+09:00",
+    "sources": [
+      {
+        "id": "experiment_records",
+        "label": "実験コード内の実行結果記録",
+        "path": "reports/experiment_insights/source.sql"
+      }
+    ],
+    "cards": [
+      {
+        "id": "best_base_card",
+        "dataset": "headline",
+        "sourceId": "experiment_records",
+        "description": "業界カテゴリを強く統合したexp04-Dのnested OOF F1",
+        "metrics": [
+          {"label": "構造化特徴量の最高F1", "field": "best_base_f1", "format": "number"},
+          {"label": "ベースライン差", "field": "best_base_delta", "format": "number", "signed": true}
+        ]
+      },
+      {
+        "id": "best_text_card",
+        "dataset": "headline",
+        "sourceId": "experiment_records",
+        "description": "名詞のみを用いたexp03のnested OOF F1",
+        "metrics": [
+          {"label": "テキスト単独の最高F1", "field": "best_text_f1", "format": "number"},
+          {"label": "構造化最高との差", "field": "text_gap", "format": "number", "signed": true}
+        ]
+      },
+      {
+        "id": "sample_card",
+        "dataset": "headline",
+        "sourceId": "experiment_records",
+        "description": "全実験で共通する学習データ件数と陽性率",
+        "metrics": [
+          {"label": "学習データ", "field": "train_rows", "format": "number"},
+          {"label": "陽性率", "field": "positive_rate", "format": "percent"}
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "base_comparison",
+        "title": "構造化特徴量実験の代表候補",
+        "subtitle": "各実験の代表条件におけるnested OOF F1。exp02は最高値だが安定性基準で不採用",
+        "showDescription": true,
+        "intent": "comparison",
+        "question": "どの構造化特徴量設計を次のベースラインにすべきか",
+        "rationale": "長い実験名を読みやすく比較するため、F1を横棒で並べる",
+        "comparisonContext": {
+          "baseline": "exp01 = 0.6562",
+          "denominator": "購入フラグを持つ学習データ742件",
+          "grain": "実験の代表条件",
+          "unit": "nested OOF F1"
+        },
+        "type": "horizontalBar",
+        "dataset": "base_results",
+        "sourceId": "experiment_records",
+        "encodings": {
+          "x": {"field": "label", "type": "nominal", "label": "代表条件"},
+          "y": {"field": "nested_oof_f1", "type": "quantitative", "label": "nested OOF F1", "format": "number"},
+          "tooltip": [
+            {"field": "mean_f1", "type": "quantitative", "label": "fold平均F1", "format": "number"},
+            {"field": "std_f1", "type": "quantitative", "label": "fold標準偏差", "format": "number"},
+            {"field": "delta_vs_baseline", "type": "quantitative", "label": "ベースライン差", "format": "number"},
+            {"field": "decision", "type": "text", "label": "判断"}
+          ]
+        },
+        "xAxisTitle": "実験の代表条件",
+        "yAxisTitle": "nested OOF F1",
+        "valueFormat": "number",
+        "layout": "full",
+        "palette": {"kind": "sequential", "name": "blue"},
+        "settings": {"sort": "descending", "showValues": true, "orientation": "horizontal"},
+        "surface": {"surface": "export", "viewMode": "both"}
+      },
+      {
+        "id": "text_comparison",
+        "title": "DX展望テキスト単独実験",
+        "subtitle": "同一5-fold・nested CVで比較したnested OOF F1。ロジスティック回帰の名詞のみが最高",
+        "showDescription": true,
+        "intent": "comparison",
+        "question": "DX展望からどの言語表現を残すべきか",
+        "rationale": "同一条件の6方式を順位として比較するため横棒を使う",
+        "comparisonContext": {
+          "baseline": "文字N-gram = 0.5692",
+          "denominator": "購入フラグを持つ学習データ742件",
+          "grain": "テキスト特徴量方式",
+          "unit": "nested OOF F1"
+        },
+        "type": "horizontalBar",
+        "dataset": "text_results",
+        "sourceId": "experiment_records",
+        "encodings": {
+          "x": {"field": "label", "type": "nominal", "label": "テキスト特徴量方式"},
+          "y": {"field": "nested_oof_f1", "type": "quantitative", "label": "nested OOF F1", "format": "number"},
+          "tooltip": [
+            {"field": "mean_f1", "type": "quantitative", "label": "fold平均F1", "format": "number"},
+            {"field": "std_f1", "type": "quantitative", "label": "fold標準偏差", "format": "number"},
+            {"field": "delta_vs_noun", "type": "quantitative", "label": "名詞のみとの差", "format": "number"},
+            {"field": "model", "type": "text", "label": "モデル"}
+          ]
+        },
+        "xAxisTitle": "テキスト特徴量方式",
+        "yAxisTitle": "nested OOF F1",
+        "valueFormat": "number",
+        "layout": "full",
+        "palette": {"kind": "sequential", "name": "orange"},
+        "settings": {"sort": "descending", "showValues": true, "orientation": "horizontal"},
+        "surface": {"surface": "export", "viewMode": "both"}
+      }
+    ],
+    "tables": [
+      {
+        "id": "next_experiments",
+        "title": "次に優先する実験",
+        "subtitle": "現時点の効果量、安定性、未検証の組み合わせから優先順位を設定",
+        "showDescription": true,
+        "dataset": "recommendations",
+        "defaultSort": {"field": "priority", "direction": "asc"},
+        "density": "spacious",
+        "sourceId": "experiment_records",
+        "layout": "full",
+        "columns": [
+          {"field": "priority", "label": "優先度", "type": "number"},
+          {"field": "experiment", "label": "検証案", "type": "text"},
+          {"field": "why", "label": "根拠", "type": "text"},
+          {"field": "success", "label": "判断基準", "type": "text"}
+        ]
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "layout": "full",
+        "body": "# 特徴量実験から得られた示唆"
+      },
+      {
+        "id": "technical_summary",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 技術サマリー\n\n- **次の構造化特徴量ベースラインは `exp04-D` が第一候補です。** nested OOF F1は0.6702で、元の0.6562から+0.0140。変換後特徴量も55列から29列へ減り、fold標準偏差は0.0434に収まっています。\n- **DX展望テキスト単独では名詞のみの `exp03` が最良です。** nested OOF F1は0.5815で、動詞・形容詞を足すほど悪化しました。小標本では表現を増やすより、対象や課題を表す名詞へ絞る方が有効です。\n- **構造化特徴量が主役ですが、テキストを捨てる判断はまだ早いです。** テキスト単独は構造化最高より0.0887低い一方、補完的な情報を持つ可能性は未検証です。次は `exp04-D` または `exp03` の簡潔な構造化特徴量に、名詞テキストを追加する統合実験が最優先です。\n- **順位の確信度は中程度以下です。** 742件・単一seed・5-foldで多数の案を同じ分割上で比較しているため、差が0.01前後の候補は追加seedで逆転し得ます。"
+      },
+      {
+        "id": "headline_metrics",
+        "type": "metric-strip",
+        "layout": "full",
+        "cardIds": ["best_base_card", "best_text_card", "sample_card"]
+      },
+      {
+        "id": "base_finding",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 業界カテゴリの統合が、性能と単純さを同時に改善\n\n`exp04-D` は業界を主要4カテゴリと「その他」にまとめ、nested OOF F1 0.6702を記録しました。ベースラインとの差は+0.0140と大きくはありませんが、変換後次元を55から29へほぼ半減しながら、fold標準偏差は0.0402から0.0434への小幅増にとどまっています。\n\n重複候補3列を落とした `exp03` も0.6667まで改善しており、**細かなカテゴリや冗長表現を持たせるより、情報を圧縮した方が742件のデータには合う**という一貫した方向が見えます。次に試す価値が高いのは、業界統合と重複除外を同時に適用する組み合わせです。"
+      },
+      {"id": "base_chart_block", "type": "chart", "layout": "full", "chartId": "base_comparison"},
+      {
+        "id": "base_negative_results",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## クラス重みと強い特徴量削減は採用根拠が弱い\n\n`scale_pos_weight=2.0` はnested OOF F1を0.6701まで上げましたが、fold標準偏差が0.0402から0.0705へ拡大し、5 fold中3 foldでベースラインを下回りました。閾値をinner CVで最適化しているため、重み付けによる追加効果は主にfold依存の確率分布変化と考えるのが安全です。現状の不採用判断は妥当です。\n\n上位20元特徴量は0.6579でほぼ横ばい、上位10では0.6087まで低下しました。**予測信号は上位10個だけに集中しておらず、20個前後または情報軸を保つ17個程度が必要**です。"
+      },
+      {
+        "id": "axis_finding",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 購入予測の中心は実行能力で、必要性・意欲は単独では弱い\n\n3軸アブレーションでは、実行能力単独のnested OOF F1が0.5662、必要性単独が0.4198、意欲単独が0.4000でした。実行能力を含む2軸は約0.612まで上がる一方、必要性＋意欲は0.4035にとどまります。\n\nこれは、購入企業を見分けるうえで財務余力・企業規模・IT体制などの**実行可能性が土台**になっていることを示します。ただし特徴量重要度と予測性能から因果は言えません。必要性や意欲は実行能力がある企業の中で効く条件付きシグナル、という仮説を次の交互作用分析で確認すべきです。"
+      },
+      {
+        "id": "text_finding",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## DX展望では『何をするか』を表す名詞が最も有効\n\nロジスティック回帰では、名詞のみの `exp03` がnested OOF F1 0.5815で最高でした。名詞＋動詞は0.5683、さらに形容詞・形状詞を加えると0.5578へ低下し、副詞まで加えると0.5740へ回復するものの名詞のみには届きません。\n\n文字N-gram 0.5692と品詞別ブロック0.5664もほぼ同水準です。**複雑な日本語処理そのものより、語彙の対象を名詞へ限定することに価値がある**と読めます。次の統合実験では、名詞TF-IDF/SVDを第一候補とし、文字N-gramは低コストな対照として残すのが合理的です。"
+      },
+      {"id": "text_chart_block", "type": "chart", "layout": "full", "chartId": "text_comparison"},
+      {
+        "id": "text_model_choice",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 30次元SVDテキストにはLightGBMより線形モデルが合う\n\n追加されたLightGBM実験では、名詞のみがnested OOF F1 0.5051、名詞＋動詞が0.5369でした。同じ入力表現に対するロジスティック回帰はそれぞれ0.5815、0.5683で、名詞のみでは+0.0764、名詞＋動詞では+0.0314上回っています。\n\nSVDで直交化・圧縮した連続成分は、木の分岐より線形結合で扱いやすいと考えられます。一方、LightGBM内では動詞追加が+0.0318改善しており、モデルによって有効な品詞が変わる点には注意が必要です。LightGBMの形容詞・副詞条件はまだ結果がなく、4条件すべての比較は未完了です。"
+      },
+      {
+        "id": "fold_instability",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## テキスト方式の差より、fold構成の影響が大きい\n\n6つのテキスト方式はfold別F1の動きが非常によく似ており、方式間のfoldプロファイル相関は0.88〜0.99でした。全方式の平均はfold 1で0.665、fold 4で0.516と約0.15開いています。\n\nしたがって、テキスト方式の微差を追う前に、foldごとの業界構成、陽性率、文書長、欠損率、語彙分布を比較する方が得るものが大きいです。特定業界や文体が一部foldに偏っているなら、追加seedだけでなく業界を考慮した分割も検討対象になります。"
+      },
+      {
+        "id": "scope_metrics",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 比較範囲と指標\n\n対象は学習データ742件、陽性率24.124%の購入フラグ予測です。主指標は、外側5-foldの未使用検証部分を結合したnested OOF F1です。各外側foldでは、内側4-foldのOOF予測だけを使ってモデル候補・正則化・分類閾値を選択しています。\n\n`exp_base` 内、または同一条件の `exp_dx_outlook` 品詞アブレーション内では直接比較できます。一方、構造化特徴量とテキスト特徴量はモデルや次元が異なるため、単独性能の大きさは比較できても、差を個別特徴量の効果として解釈することはできません。"
+      },
+      {
+        "id": "methodology",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 評価設計はリークを抑えているが、実験選択の楽観性は残る\n\n前処理、TF-IDF、SVD、標準化、特徴量選択、正則化、閾値選択を各学習fold内でfitしており、個々の実験の評価設計は妥当です。外側validationを選択へ使っていない点も良好です。\n\nただし、同じ外側5-fold結果を見ながら多数の実験案から最良候補を選んでいるため、プロジェクト全体では外側foldが事実上の開発セットになっています。最高値0.6702をそのまま未知データの期待値とみなさず、複数seedのrepeated nested CVまたは最終固定holdoutで再確認する必要があります。"
+      },
+      {
+        "id": "limitations",
+        "type": "markdown",
+        "layout": "full",
+        "sourceId": "experiment_records",
+        "body": "## 現時点の確信度は『方向性は共有可能、最終採用は要再検証』\n\n**総合評価: Share with caveats。** 業界統合、冗長削減、名詞限定という方向性は複数の結果で整合しています。一方、候補間の差は概ね0.01前後で、5 foldの標準偏差0.04〜0.07より小さいため、順位は不安定です。\n\nfold標準偏差は5点の記述統計であり、信頼区間ではありません。また、F1最適化閾値は0.23〜0.31付近が多く、0.5固定では結果が再現しません。提出時はfoldモデルの確率平均と、CVで固定した最終閾値をセットで扱う必要があります。"
+      },
+      {
+        "id": "recommendation_intro",
+        "type": "markdown",
+        "layout": "full",
+        "body": "## 次は『圧縮した構造化特徴量＋名詞テキスト』を検証\n\n現在の結果を最も効率よく前進させる順序は次の通りです。まず再現性を確認し、その後に未検証の補完関係を試します。"
+      },
+      {"id": "recommendation_table_block", "type": "table", "layout": "full", "tableId": "next_experiments"},
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "layout": "full",
+        "body": "## 追加で答えるべき問い\n\n- `exp03` の重複除外と `exp04-D` の業界統合を同時に適用すると、改善は加算されるか。\n- 名詞テキストは構造化モデルが間違える企業を正しく救えているか。OOF予測の誤り重複率で補完性を確認できるか。\n- テキストfold 1とfold 4の差は、業界、文書長、欠損、語彙、陽性率のどれで説明できるか。\n- 業界統合の境界は追加seedでも同じか。カテゴリ規則をCV結果に合わせ直すと過適合になるため、規則は事前固定できるか。"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-09T03:18:31+09:00",
+    "status": "ready",
+    "datasets": {
+      "headline": [
+        {
+          "best_base_f1": 0.6702,
+          "best_base_delta": 0.0140,
+          "best_text_f1": 0.5815,
+          "text_gap": -0.0887,
+          "train_rows": 742,
+          "positive_rate": 0.24124
+        }
+      ],
+      "base_results": [
+        {"experiment": "exp04-D", "label": "exp04-D 業界統合", "nested_oof_f1": 0.6702, "mean_f1": 0.6710, "std_f1": 0.0434, "delta_vs_baseline": 0.0140, "input_features": 22, "transformed_features": 29, "decision": "第一候補"},
+        {"experiment": "exp02 weight=2.0", "label": "exp02 クラス重み2.0", "nested_oof_f1": 0.6701, "mean_f1": 0.6700, "std_f1": 0.0705, "delta_vs_baseline": 0.0139, "input_features": 22, "transformed_features": 55, "decision": "不安定のため不採用"},
+        {"experiment": "exp03", "label": "exp03 重複除外", "nested_oof_f1": 0.6667, "mean_f1": 0.6676, "std_f1": 0.0473, "delta_vs_baseline": 0.0105, "input_features": 19, "transformed_features": 49, "decision": "採用候補"},
+        {"experiment": "exp05 top20", "label": "exp05 上位20特徴量", "nested_oof_f1": 0.6579, "mean_f1": 0.6580, "std_f1": 0.0415, "delta_vs_baseline": 0.0017, "input_features": 20, "transformed_features": 52, "decision": "改善は僅少"},
+        {"experiment": "exp06-G", "label": "exp06 3軸すべて", "nested_oof_f1": 0.6577, "mean_f1": 0.6551, "std_f1": 0.0421, "delta_vs_baseline": 0.0015, "input_features": 17, "transformed_features": 17, "decision": "簡潔な代替候補"},
+        {"experiment": "exp01", "label": "exp01 ベースライン", "nested_oof_f1": 0.6562, "mean_f1": 0.6562, "std_f1": 0.0402, "delta_vs_baseline": 0.0, "input_features": 22, "transformed_features": 55, "decision": "比較基準"}
+      ],
+      "text_results": [
+        {"experiment": "exp03", "label": "LR exp03 名詞のみ", "model": "LogisticRegression", "nested_oof_f1": 0.5815, "mean_f1": 0.5876, "std_f1": 0.0605, "delta_vs_noun": 0.0, "dimensions": 30},
+        {"experiment": "exp06", "label": "LR exp06 全品詞", "model": "LogisticRegression", "nested_oof_f1": 0.5740, "mean_f1": 0.5801, "std_f1": 0.0415, "delta_vs_noun": -0.0075, "dimensions": 30},
+        {"experiment": "exp01", "label": "LR exp01 文字N-gram", "model": "LogisticRegression", "nested_oof_f1": 0.5692, "mean_f1": 0.5735, "std_f1": 0.0666, "delta_vs_noun": -0.0123, "dimensions": 5000},
+        {"experiment": "exp04", "label": "LR exp04 名詞＋動詞", "model": "LogisticRegression", "nested_oof_f1": 0.5683, "mean_f1": 0.5717, "std_f1": 0.0513, "delta_vs_noun": -0.0132, "dimensions": 30},
+        {"experiment": "exp02", "label": "LR exp02 品詞別ブロック", "model": "LogisticRegression", "nested_oof_f1": 0.5664, "mean_f1": 0.5722, "std_f1": 0.0571, "delta_vs_noun": -0.0151, "dimensions": 36},
+        {"experiment": "exp05", "label": "LR exp05 形容詞まで", "model": "LogisticRegression", "nested_oof_f1": 0.5578, "mean_f1": 0.5628, "std_f1": 0.0442, "delta_vs_noun": -0.0237, "dimensions": 30},
+        {"experiment": "exp04", "label": "LGBM exp04 名詞＋動詞", "model": "LightGBM", "nested_oof_f1": 0.5369, "mean_f1": 0.5340, "std_f1": 0.0530, "delta_vs_noun": -0.0446, "dimensions": 30},
+        {"experiment": "exp03", "label": "LGBM exp03 名詞のみ", "model": "LightGBM", "nested_oof_f1": 0.5051, "mean_f1": 0.5038, "std_f1": 0.0281, "delta_vs_noun": -0.0764, "dimensions": 30}
+      ],
+      "recommendations": [
+        {"priority": 1, "experiment": "複数seedでexp01・exp03・exp04-Dを再評価", "why": "差0.01前後に対してfoldばらつきが大きい", "success": "平均順位とF1差がseedをまたいで維持"},
+        {"priority": 2, "experiment": "exp03の重複除外＋exp04-Dの業界統合", "why": "両方が別の圧縮で単独改善", "success": "nested OOF F1改善かつ分散を悪化させない"},
+        {"priority": 3, "experiment": "構造化候補＋名詞TF-IDF/SVD", "why": "テキスト単独は弱いが補完性は未検証", "success": "構造化単独比+0.005以上を複数seedで確認"},
+        {"priority": 4, "experiment": "fold別の業界・文書長・語彙分布診断", "why": "テキスト方式間相関0.88〜0.99でfold差が支配的", "success": "fold 1と4の約0.15差を説明する要因を特定"},
+        {"priority": 5, "experiment": "OOF誤りの重複率と確率相関を比較", "why": "統合前に構造化とテキストの補完性を測る", "success": "誤りの非重複または低い予測相関を確認"}
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "experiment_records",
+      "label": "実験コード内の実行結果記録",
+      "path": "reports/experiment_insights/source.sql"
+    }
+  ]
+}

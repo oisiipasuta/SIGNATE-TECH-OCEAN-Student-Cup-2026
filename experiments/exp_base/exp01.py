@@ -1,5 +1,5 @@
 """
-実験ID: exp1
+実験ID: exp01
 実験名: calc_features（dx_outlook除外）+ LightGBM ベースライン
 著者: oisiipasuta
 
@@ -30,7 +30,7 @@
 - nested OOF F1: 0.6562
 - 最終threshold（外側fold閾値の平均）: 0.3020
 - One-Hot後の特徴量重要度上位50件とF1スコアの図を
-  experiments/results/exp1/へ保存する（業界カテゴリは集約しない）。
+  experiments/exp_base/results/exp01/へ保存する（業界カテゴリは集約しない）。
 
 
 
@@ -51,8 +51,8 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-# `python experiments/exp1.py` で実行してもリポジトリ直下をimportできるようにする。
-BASE_DIR = Path(__file__).resolve().parent.parent
+# `python experiments/exp_base/exp01.py` で実行してもリポジトリ直下をimportできるようにする。
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -67,7 +67,7 @@ from calc_features.purchase_timing import calculate_purchase_timing_features
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp1"
+EXPERIMENT_ID = "exp01"
 EXPERIMENT_NAME = "calc_features（dx_outlook除外）+ LightGBM ベースライン"
 AUTHOR = "oisiipasuta"
 
