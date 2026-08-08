@@ -1,0 +1,2 @@
+experiment_id,author,features,feature_pipeline,model,model_params,cv_method,threshold,fold_f1_mean,fold_f1_std,oof_f1,status,note
+exp001,担当者名,numeric_all,median_fill,LightGBM,default,StratifiedKFold_5_seed42,0.5,,,,planned,ベースライン実験
