@@ -12,6 +12,12 @@ from .motivation import (
     calculate_motivation_features,
 )
 
+from .all_features_v1 import (
+    EXCLUDED_FEATURE_COLUMNS,
+    RETAINED_INDUSTRIES,
+    all_features_v1,
+)
+
 __all__ = [
     "ADOPTION_BARRIER_FEATURE_COLUMNS",
     "add_adoption_barrier_features",
@@ -19,4 +25,7 @@ __all__ = [
     "MOTIVATION_FEATURE_COLUMNS",
     "add_motivation_features",
     "calculate_motivation_features",
+    "EXCLUDED_FEATURE_COLUMNS",
+    "RETAINED_INDUSTRIES",
+    "all_features_v1",
 ]
