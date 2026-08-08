@@ -1,11 +1,11 @@
 """
-実験ID: exp2
+実験ID: exp02
 実験名: クラス重み（scale_pos_weight）の比較
 著者: oisiipasuta
 
 目的・仮説:
 - 陽性率24.1%の不均衡に対して scale_pos_weight が必要か検証する。
-- exp1と同じ特徴量、前処理、LightGBMパラメータ、CV分割を固定し、
+- exp01と同じ特徴量、前処理、LightGBMパラメータ、CV分割を固定し、
   scale_pos_weight = 1.0, 2.0, 3.15 のみを変更する。
 - 各重み・各outer foldで、inner 4-fold OOF予測からF1最大の閾値を再最適化する。
 
@@ -22,8 +22,8 @@
 - 差が小さい場合はscale_pos_weight=1.0を採用する。
 
 出力:
-- experiments/results/exp2/feature_importance.png
-- experiments/results/exp2/f1_scores.png
+- experiments/exp_base/results/exp02/feature_importance.png
+- experiments/exp_base/results/exp02/f1_scores.png
 - CSV/JSON、予測値、submissionは出力しない。
 
 実行結果（2026-08-08）:
@@ -62,7 +62,7 @@ from sklearn.preprocessing import OneHotEncoder
 plt.rcParams["font.family"] = "Noto Sans JP"
 plt.rcParams["axes.unicode_minus"] = False
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -77,7 +77,7 @@ from calc_features.purchase_timing import calculate_purchase_timing_features
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp2"
+EXPERIMENT_ID = "exp02"
 EXPERIMENT_NAME = "scale_pos_weight comparison"
 # 元CSVの列名は環境依存の文字化けを含むため、train/testの列差から厳密に解決する。
 TARGET_COLUMN: str | None = None
@@ -101,7 +101,7 @@ COMPARISON_TOLERANCE = 1e-12
 
 TRAIN_PATH = BASE_DIR / "data" / "train.csv"
 TEST_PATH = BASE_DIR / "data" / "test.csv"
-RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
+RESULT_DIR = BASE_DIR / "experiments" / "exp_base" / "results" / EXPERIMENT_ID
 
 
 # ==================================================
@@ -109,7 +109,7 @@ RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
 # ==================================================
 
 def calculate_features(df: pd.DataFrame) -> pd.DataFrame:
-    """exp1と同じ5つの特徴量生成関数を、同じ順序で適用する。"""
+    """exp01と同じ5つの特徴量生成関数を、同じ順序で適用する。"""
     feature_frames = [
         calculate_execution_features(df),
         calculate_motivation_features(df),

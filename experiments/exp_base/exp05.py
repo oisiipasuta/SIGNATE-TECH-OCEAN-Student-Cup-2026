@@ -1,5 +1,5 @@
 """
-実験ID: exp5
+実験ID: exp05
 実験名: 重要特徴量のみのモデル
 著者: Codex
 
@@ -24,8 +24,8 @@
 - 最終閾値は採用モデルのouter fold閾値の平均とする。
 
 出力:
-- experiments/results/exp5/feature_importance.png
-- experiments/results/exp5/f1_scores.png
+- experiments/exp_base/results/exp05/feature_importance.png
+- experiments/exp_base/results/exp05/f1_scores.png
 - CSV/JSON、予測値、submissionは出力しない。
 
 実行結果（2026-08-08）:
@@ -63,7 +63,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -85,7 +85,7 @@ if JAPANESE_FONT_PATH.exists():
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp5"
+EXPERIMENT_ID = "exp05"
 EXPERIMENT_NAME = "重要特徴量のみのモデル"
 TARGET_COLUMN: str | None = None
 
@@ -108,7 +108,7 @@ THRESHOLD_CANDIDATES = np.linspace(0.05, 0.95, 181)
 
 TRAIN_PATH = BASE_DIR / "data" / "train.csv"
 TEST_PATH = BASE_DIR / "data" / "test.csv"
-RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
+RESULT_DIR = BASE_DIR / "experiments" / "exp_base" / "results" / EXPERIMENT_ID
 
 
 # ==================================================

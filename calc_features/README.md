@@ -147,15 +147,45 @@ DX 導入の障壁と、既存施策への満足・成果実感を表す6特徴�
 
 ## 6. 今後のDX展望 (`dx_outlook.py`)
 
-`今後のDX展望` の自由記述から次の特徴量を作成するためのファイルですが、現在は未実装です。
+`今後のDX展望` の自由記述を次の順に数値特徴量へ変換します。
 
-| 特徴量 | 予定している定義 | 状態 |
-|---|---|---|
-| `経営主導フラグ` | 経営層がDXを主導しているか | 未実装 |
-| `全社展開フラグ` | DX施策が全社展開を前提としているか | 未実装 |
-| `計画具体性スコア` | 実施時期、対象部門、導入技術、行動、推進担当、予算、KPIなどの具体性 | 未実装 |
+1. MeCab（辞書は `unidic-lite`）で日本語を形態素解析
+2. 名詞、動詞、形容詞・形状詞、副詞だけを抽出
+3. 抽出語のTF-IDFを計算
+4. TruncatedSVDで5、10、30次元のいずれかへ圧縮
 
-`calculate_dx_outlook_features()` を呼ぶと `NotImplementedError` が発生します。
+既定値は30次元です。出力列名は、たとえば10次元なら
+`dx_outlook_svd_10_01` ～ `dx_outlook_svd_10_10` です。欠損文は空文字列として
+扱います。利用前にリポジトリ直下で `pip install -r requirements.txt` を実行して
+`mecab-python3` と `unidic-lite` を導入してください。
+
+学習データだけを手早く変換する場合は次の補助関数を利用できます。
+
+```python
+from calc_features import calculate_dx_outlook_features
+
+train_dx = calculate_dx_outlook_features(train, n_components=10)
+```
+
+検証・テストデータがある場合は、TF-IDFの語彙・IDFとSVDにデータリークが
+起きないよう、学習データだけで `fit` してください。
+
+```python
+from calc_features import DXOutlookTfidfSVD
+
+transformer = DXOutlookTfidfSVD(n_components=10)
+train_dx = transformer.fit_transform(train)
+valid_dx = transformer.transform(valid)
+test_dx = transformer.transform(test)
+```
+
+クロスバリデーションでは、各foldで新しい `DXOutlookTfidfSVD` を作成し、
+そのfoldの学習部分だけに `fit_transform`、検証部分に `transform` を適用します。
+TF-IDFの語彙数より大きい次元数は指定できません。
+
+抽出品詞は `target_parts_of_speech` で変更できます。既定値は従来どおり
+名詞・動詞・形容詞・形状詞・副詞です。たとえば名詞だけを使う場合は、
+`DXOutlookTfidfSVD(target_parts_of_speech=("名詞",))` と指定します。
 
 ## 使い方
 
@@ -174,6 +204,27 @@ features = all_features_v1(df)
 除外した全行欠損特徴量8列と重複候補3列を除外します。業界は実験4-Dのルールに
 従い、`自動車・乗り物`、`IT`、`建設・工事`、`商社`だけを残し、`機械`を含む
 それ以外を`その他`に統合します。出力は19列です。
+
+### v1とDX展望のSVD第2成分を結合する
+
+```python
+from calc_features import AllFeaturesV2Transformer
+
+transformer = AllFeaturesV2Transformer()
+train_features = transformer.fit_transform(train)
+valid_features = transformer.transform(valid)
+test_features = transformer.transform(test)
+```
+
+`AllFeaturesV2Transformer` は `all_features_v1` の19列に、`今後のDX展望`を
+名詞・動詞だけでTF-IDF化し、30次元SVDへ圧縮した第2成分
+`dx_outlook_svd_30_02` を加えた20列を返します。TF-IDFとSVDは `fit` に渡した
+データだけで学習されます。クロスバリデーションではfoldごとに新しい
+transformerを作成してください。
+
+学習データ単体を手早く計算する場合は `all_features_v2(train)` も利用できます。
+検証・テストデータがある場合にデータごとにこの簡易関数を呼ぶと変換条件が
+異なるため、上記のtransformerを使用してください。
 
 ### Python から特徴量だけを計算する
 
@@ -241,6 +292,8 @@ python -m calc_features.calculate data/train.csv calc_features/train_features.cs
 | `adoption_barriers.py` | 導入障壁・充足済み度の6特徴量 |
 | `necessity.py` | 必要性の6特徴量 |
 | `purchase_timing.py` | 購買タイミングの6特徴量 |
-| `dx_outlook.py` | 今後のDX展望由来の3特徴量（未実装） |
+| `dx_outlook.py` | MeCab + TF-IDF + TruncatedSVDによる今後のDX展望特徴量 |
+| `all_features_v1.py` | 実験3・4採用後の19特徴量 |
+| `all_features_v2.py` | v1の19列とDX展望SVD第2成分を結合した20特徴量 |
 | `__init__.py` | パッケージ直下に公開する関数・定数の定義 |
 | `test_*.py` | 一部特徴量の単体テスト |

@@ -1,5 +1,5 @@
 """
-実験ID: exp6
+実験ID: exp06
 実験名: 3軸（実行能力・必要性・意欲）のアブレーション
 著者: oisiipasuta
 
@@ -29,8 +29,8 @@
 - 最終thresholdは各構成の外側fold閾値の平均とする。
 
 出力:
-- experiments/results/exp6/feature_importance.png（Exp6-G、全17特徴量）
-- experiments/results/exp6/f1_scores.png（Exp6-A～Gのfold別F1と集約値）
+- experiments/exp_base/results/exp06/feature_importance.png（Exp06-G、全17特徴量）
+- experiments/exp_base/results/exp06/f1_scores.png（Exp06-A～Gのfold別F1と集約値）
 - CSV/JSON、予測値、submissionは出力しない。
 
 結果（2026-08-08実行後に更新）:
@@ -75,7 +75,7 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.pipeline import Pipeline
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
@@ -88,7 +88,7 @@ from calc_features.motivation import calculate_motivation_features
 # 1. 実験設定
 # ==================================================
 
-EXPERIMENT_ID = "exp6"
+EXPERIMENT_ID = "exp06"
 EXPERIMENT_NAME = "3軸アブレーション"
 TARGET_COLUMN = "購入フラグ"
 
@@ -146,7 +146,7 @@ VARIANTS = {
 
 TRAIN_PATH = BASE_DIR / "data" / "train.csv"
 TEST_PATH = BASE_DIR / "data" / "test.csv"
-RESULT_DIR = BASE_DIR / "experiments" / "results" / EXPERIMENT_ID
+RESULT_DIR = BASE_DIR / "experiments" / "exp_base" / "results" / EXPERIMENT_ID
 
 
 # ==================================================
@@ -379,14 +379,14 @@ def feature_axis(feature: str) -> str:
 
 
 def plot_feature_importance(feature_importance: pd.DataFrame) -> None:
-    """Exp6-Gの全17特徴量を、軸を色分けして降順で描く。"""
+    """Exp06-Gの全17特徴量を、軸を色分けして降順で描く。"""
     plot_data = feature_importance.sort_values("importance", ascending=True).copy()
     colors = {"実行能力": "#2563EB", "必要性": "#D97706", "意欲": "#059669"}
     bar_colors = [colors[feature_axis(feature)] for feature in plot_data["feature"]]
     fig, ax = plt.subplots(figsize=(12, max(7.5, 0.42 * len(plot_data) + 2.8)))
     bars = ax.barh(plot_data["feature"], plot_data["importance"], color=bar_colors)
     ax.bar_label(bars, fmt="%.1f", padding=3, fontsize=8)
-    ax.set_title("Exp6-G 3軸すべての特徴量重要度", fontsize=16, fontweight="bold", pad=30)
+    ax.set_title("Exp06-G 3軸すべての特徴量重要度", fontsize=16, fontweight="bold", pad=30)
     ax.text(
         0.5,
         1.01,
@@ -473,7 +473,7 @@ def plot_f1_scores(results: dict[str, dict[str, object]]) -> None:
         linespacing=1.45,
     )
 
-    fig.suptitle("Exp6 3軸アブレーション：外側検証fold別 F1", fontsize=18, fontweight="bold")
+    fig.suptitle("Exp06 3軸アブレーション：外側検証fold別 F1", fontsize=18, fontweight="bold")
     fig.text(
         0.5,
         0.94,

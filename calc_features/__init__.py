@@ -18,6 +18,25 @@ from .all_features_v1 import (
     all_features_v1,
 )
 
+from .all_features_v2 import (
+    DX_OUTLOOK_N_COMPONENTS as ALL_FEATURES_V2_DX_N_COMPONENTS,
+    DX_OUTLOOK_PARTS_OF_SPEECH as ALL_FEATURES_V2_DX_PARTS_OF_SPEECH,
+    DX_OUTLOOK_SECOND_FEATURE,
+    AllFeaturesV2Transformer,
+    all_features_v2,
+)
+
+from .dx_outlook import (
+    DX_OUTLOOK_COLUMN,
+    DX_OUTLOOK_FEATURE_COLUMNS,
+    DX_OUTLOOK_SVD_COMPONENTS,
+    TARGET_PARTS_OF_SPEECH,
+    SUPPORTED_PARTS_OF_SPEECH,
+    DXOutlookTfidfSVD,
+    calculate_dx_outlook_features,
+    get_dx_outlook_feature_columns,
+)
+
 __all__ = [
     "ADOPTION_BARRIER_FEATURE_COLUMNS",
     "add_adoption_barrier_features",
@@ -28,4 +47,17 @@ __all__ = [
     "EXCLUDED_FEATURE_COLUMNS",
     "RETAINED_INDUSTRIES",
     "all_features_v1",
+    "ALL_FEATURES_V2_DX_N_COMPONENTS",
+    "ALL_FEATURES_V2_DX_PARTS_OF_SPEECH",
+    "DX_OUTLOOK_SECOND_FEATURE",
+    "AllFeaturesV2Transformer",
+    "all_features_v2",
+    "DX_OUTLOOK_COLUMN",
+    "DX_OUTLOOK_FEATURE_COLUMNS",
+    "DX_OUTLOOK_SVD_COMPONENTS",
+    "TARGET_PARTS_OF_SPEECH",
+    "SUPPORTED_PARTS_OF_SPEECH",
+    "DXOutlookTfidfSVD",
+    "calculate_dx_outlook_features",
+    "get_dx_outlook_feature_columns",
 ]
