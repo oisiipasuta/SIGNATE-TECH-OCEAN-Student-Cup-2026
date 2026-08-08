@@ -7,6 +7,7 @@
 - 業界ダミーが汎化性能を改善するか、同一のネステッドCV分割で比較する。
 - Exp4-Aは業界ダミーあり、Exp4-Bは業界特徴量なし、Exp4-Cは過去のexp1重要度で
   「業界_化学」より下だったカテゴリを「その他」に統合する。
+- Exp4-Dは「業界_機械」以下（機械を含む）を「その他」に統合する。
 - Aの平均F1が高くてもfold間標準偏差が大きい場合は、少数業界への過適合を疑う。
 
 Exp4-Cの事前固定ルール:
@@ -15,6 +16,10 @@ Exp4-Cの事前固定ルール:
 - 上記以外の業界は「その他」に統合する。
 - このルールはexp1の重要度順位から実験前に固定し、今回の目的変数やCV結果から
   選び直さない。
+
+Exp4-Dの事前固定ルール:
+- 個別に残す業界: 自動車・乗り物、IT、建設・工事、商社。
+- 機械および重要度順位が機械より下の業界は「その他」に統合する。
 
 特徴量・前処理:
 - calc_featuresのうちdx_outlook.pyを除く5モジュールをexp1と同じ順序で使用する。
@@ -33,9 +38,9 @@ Exp4-Cの事前固定ルール:
 - experiments/results/exp4/f1_scores.png
 - CSV/JSON、予測値、submissionは出力しない。
 
-実行結果（2026-08-08実行後に更新）:
-- 入力特徴量数: A=22、B=21、C=22。
-- 変換後特徴量数: A=55、B=24、C=33。
+実行結果（2026-08-09、Exp4-D追加後）:
+- 入力特徴量数: A=22、B=21、C=22、D=22。
+- 変換後特徴量数: A=55、B=24、C=33、D=29。
 - 全欠損のため除外した特徴量: 人材不足フラグ、予算制約フラグ、組織部門数、
   組織階層数、業務種類数、現場課題数、システム刷新フラグ、導入時期フラグ。
 - Exp4-A: fold閾値=0.275/0.235/0.285/0.375/0.340、
@@ -47,8 +52,12 @@ Exp4-Cの事前固定ルール:
 - Exp4-C: fold閾値=0.270/0.300/0.220/0.375/0.330、
   fold F1=0.6118/0.7397/0.5909/0.7200/0.6849、平均=0.6695、標準偏差=0.0587、
   nested OOF F1=0.6650、最終閾値=0.2990。
-- 解釈: CはA比で平均F1が+0.0133、nested OOF F1が+0.0088だが、fold標準偏差は
-  +0.0185。低重要度業界の統合は有望だが、Aより安定とはいえず追加seedでの確認が必要。
+- Exp4-D: fold閾値=0.270/0.270/0.310/0.435/0.270、
+  fold F1=0.6420/0.6933/0.6133/0.6667/0.7397、平均=0.6710、標準偏差=0.0434、
+  nested OOF F1=0.6702、最終閾値=0.3110。
+- 解釈: Dは平均F1とnested OOF F1が4条件中で最高。標準偏差もCの0.0587から
+  0.0434へ低下し、最も安定していたAの0.0402に近い。今回のseedでは、機械以下を
+  統合するDが性能と安定性のバランスで最も有望だが、差は小さいため追加seedでの確認が必要。
 """
 
 from __future__ import annotations
@@ -90,7 +99,7 @@ INDUSTRY_COLUMN = "業界"
 OTHER_INDUSTRY_LABEL = "その他"
 
 # exp1の平均split importanceで「業界_化学」以上だったカテゴリを事前固定する。
-RETAINED_INDUSTRIES = frozenset(
+RETAINED_INDUSTRIES_C = frozenset(
     {
         "自動車・乗り物",
         "IT",
@@ -103,10 +112,21 @@ RETAINED_INDUSTRIES = frozenset(
     }
 )
 
+# exp1の平均split importanceで「業界_機械」より上だったカテゴリだけを残す。
+RETAINED_INDUSTRIES_D = frozenset(
+    {
+        "自動車・乗り物",
+        "IT",
+        "建設・工事",
+        "商社",
+    }
+)
+
 CONDITIONS = {
     "Exp4-A": "業界ダミーあり",
     "Exp4-B": "業界特徴量なし",
-    "Exp4-C": "低重要度業界をその他に統合",
+    "Exp4-C": "化学より下をその他に統合",
+    "Exp4-D": "機械以下をその他に統合",
 }
 
 MODEL_PARAMS = {
@@ -160,14 +180,19 @@ def prepare_base_features(
 
 
 def apply_condition(features: pd.DataFrame, condition: str) -> pd.DataFrame:
-    """A/B/Cの業界特徴量ルールを適用したコピーを返す。"""
+    """A/B/C/Dの業界特徴量ルールを適用したコピーを返す。"""
     result = features.copy()
     if condition == "Exp4-B":
         return result.drop(columns=[INDUSTRY_COLUMN])
-    if condition == "Exp4-C":
+    if condition in {"Exp4-C", "Exp4-D"}:
+        retained_industries = (
+            RETAINED_INDUSTRIES_C
+            if condition == "Exp4-C"
+            else RETAINED_INDUSTRIES_D
+        )
         industry = result[INDUSTRY_COLUMN].astype("string")
         result[INDUSTRY_COLUMN] = industry.where(
-            industry.isin(RETAINED_INDUSTRIES), OTHER_INDUSTRY_LABEL
+            industry.isin(retained_industries), OTHER_INDUSTRY_LABEL
         )
     elif condition != "Exp4-A":
         raise ValueError(f"未知の比較条件です: {condition}")
@@ -289,7 +314,7 @@ def calculate_inner_threshold(
 
 
 # ==================================================
-# 5. ネステッドCV・3条件比較
+# 5. ネステッドCV・4条件比較
 # ==================================================
 
 def run_nested_cv(
@@ -394,14 +419,14 @@ def configure_japanese_font() -> str:
 def plot_feature_importance(
     results_by_condition: dict[str, dict[str, object]],
 ) -> None:
-    """3条件の全変換後特徴量を、条件別パネルに描く。"""
+    """4条件の全変換後特徴量を、条件別パネルに描く。"""
     max_feature_count = max(
         len(result["feature_importance"])
         for result in results_by_condition.values()
     )
     figure_height = max(8.0, 0.36 * max_feature_count + 2.5)
-    fig, axes = plt.subplots(1, 3, figsize=(28, figure_height), squeeze=False)
-    colors = ("#2563EB", "#64748B", "#F59E0B")
+    fig, axes = plt.subplots(1, 4, figsize=(36, figure_height), squeeze=False)
+    colors = ("#2563EB", "#64748B", "#F59E0B", "#10B981")
     for ax, (condition, label), color in zip(
         axes[0], CONDITIONS.items(), colors
     ):
@@ -440,12 +465,12 @@ def plot_f1_scores(
 ) -> None:
     """outer foldごとのF1と各条件の要約を描く。"""
     folds = np.arange(1, OUTER_N_SPLITS + 1)
-    width = 0.24
-    colors = ("#2563EB", "#64748B", "#F59E0B")
+    width = 0.19
+    colors = ("#2563EB", "#64748B", "#F59E0B", "#10B981")
     fig, ax = plt.subplots(figsize=(13, 8))
     for index, ((condition, label), color) in enumerate(zip(CONDITIONS.items(), colors)):
         result = results_by_condition[condition]
-        positions = folds + (index - 1) * width
+        positions = folds + (index - 1.5) * width
         bars = ax.bar(
             positions,
             result["fold_scores"],
@@ -463,6 +488,13 @@ def plot_f1_scores(
                 rotation=90,
                 fontsize=8,
             )
+        ax.axhline(
+            result["mean_f1"],
+            color=color,
+            linestyle="--",
+            linewidth=1.2,
+            alpha=0.55,
+        )
     summaries = []
     for condition in CONDITIONS:
         result = results_by_condition[condition]
@@ -480,7 +512,7 @@ def plot_f1_scores(
         fontsize=10,
         bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.92},
     )
-    fig.suptitle("業界特徴量3条件のouter-fold F1比較", fontsize=16, y=0.985)
+    fig.suptitle("業界特徴量4条件のouter-fold F1比較", fontsize=16, y=0.985)
     fig.text(
         0.5,
         0.95,
@@ -545,7 +577,8 @@ def main() -> None:
     print(f"Japanese plot font: {font_name}")
     print(f"Positive rate: {y.mean():.4%}")
     print(f"Base input features: {len(base_train.columns)}; excluded all-missing: {excluded}")
-    print(f"Exp4-C retained industries: {sorted(RETAINED_INDUSTRIES)}")
+    print(f"Exp4-C retained industries: {sorted(RETAINED_INDUSTRIES_C)}")
+    print(f"Exp4-D retained industries: {sorted(RETAINED_INDUSTRIES_D)}")
     for condition in CONDITIONS:
         X, _, _ = feature_sets[condition]
         result = results_by_condition[condition]

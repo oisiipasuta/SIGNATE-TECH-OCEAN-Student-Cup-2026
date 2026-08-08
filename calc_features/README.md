@@ -159,6 +159,22 @@ DX 導入の障壁と、既存施策への満足・成果実感を表す6特徴�
 
 ## 使い方
 
+### 実験3・4採用後の特徴量セットを一括計算する
+
+```python
+import pandas as pd
+
+from calc_features import all_features_v1
+
+df = pd.read_csv("data/train.csv")
+features = all_features_v1(df)
+```
+
+`all_features_v1()` は、`dx_outlook.py` を除く5モジュールを一括計算し、実験3で
+除外した全行欠損特徴量8列と重複候補3列を除外します。業界は実験4-Dのルールに
+従い、`自動車・乗り物`、`IT`、`建設・工事`、`商社`だけを残し、`機械`を含む
+それ以外を`その他`に統合します。出力は19列です。
+
 ### Python から特徴量だけを計算する
 
 ```python
@@ -202,7 +218,9 @@ df = add_necessity_features(df)
 df = add_purchase_timing_features(df)
 ```
 
-現在、パッケージ直下の `calc_features` から直接 import できるのは、`motivation.py` と `adoption_barriers.py` の公開関数・定数だけです。それ以外は上記のように各モジュールから import してください。
+パッケージ直下の `calc_features` からは、`all_features_v1` と、`motivation.py`、
+`adoption_barriers.py` の公開関数・定数を直接 import できます。それ以外は上記の
+ように各モジュールから import してください。
 
 ### コマンドラインから実行能力特徴量をCSVへ出力する
 
@@ -226,4 +244,3 @@ python -m calc_features.calculate data/train.csv calc_features/train_features.cs
 | `dx_outlook.py` | 今後のDX展望由来の3特徴量（未実装） |
 | `__init__.py` | パッケージ直下に公開する関数・定数の定義 |
 | `test_*.py` | 一部特徴量の単体テスト |
-
