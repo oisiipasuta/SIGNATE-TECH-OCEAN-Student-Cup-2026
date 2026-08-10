@@ -31,11 +31,14 @@ class AllFeaturesV2Test(unittest.TestCase):
         dx_transformer = MagicMock()
         dx_transformer.fit.return_value = dx_transformer
         dx_transformer.transform.return_value = svd
+        base_transformer = MagicMock()
+        base_transformer.fit_transform.return_value = base
+        base_transformer.transform.return_value = base
 
         with (
             patch(
-                "calc_features.all_features_v2.all_features_v1",
-                return_value=base,
+                "calc_features.all_features_v2.AllFeaturesV1Transformer",
+                return_value=base_transformer,
             ),
             patch(
                 "calc_features.all_features_v2.DXOutlookTfidfSVD",
@@ -50,6 +53,8 @@ class AllFeaturesV2Test(unittest.TestCase):
             ["営業利益率", "業界", DX_OUTLOOK_SECOND_FEATURE],
         )
         self.assertEqual(actual[DX_OUTLOOK_SECOND_FEATURE].tolist(), [3.0, 4.0])
+        base_transformer.fit_transform.assert_called_once_with(source)
+        base_transformer.transform.assert_called_once_with(source)
         dx_transformer.fit.assert_called_once_with(source)
         dx_transformer.transform.assert_called_once_with(source)
 

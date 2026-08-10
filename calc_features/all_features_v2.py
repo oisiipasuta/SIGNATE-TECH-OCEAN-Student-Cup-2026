@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
-from .all_features_v1 import all_features_v1
+from .all_features_v1 import INDUSTRY_MIN_FREQUENCY, AllFeaturesV1Transformer
 from .dx_outlook import DXOutlookTfidfSVD, get_dx_outlook_feature_columns
 
 
@@ -33,14 +33,19 @@ class AllFeaturesV2Transformer(BaseEstimator, TransformerMixin):
         min_df: int | float = 1,
         max_features: int | None = None,
         random_state: int = 42,
+        industry_min_frequency: float = INDUSTRY_MIN_FREQUENCY,
     ) -> None:
         self.min_df = min_df
         self.max_features = max_features
         self.random_state = random_state
+        self.industry_min_frequency = industry_min_frequency
 
     def fit(self, X: pd.DataFrame, y: Any = None) -> "AllFeaturesV2Transformer":
         del y
-        base_features = all_features_v1(X)
+        self.base_transformer_ = AllFeaturesV1Transformer(
+            industry_min_frequency=self.industry_min_frequency
+        )
+        base_features = self.base_transformer_.fit_transform(X)
         if DX_OUTLOOK_SECOND_FEATURE in base_features.columns:
             raise ValueError(
                 f"all_features_v1と追加特徴量の列名が重複しています: "
@@ -64,9 +69,13 @@ class AllFeaturesV2Transformer(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         check_is_fitted(
             self,
-            attributes=["dx_outlook_transformer_", "feature_names_out_"],
+            attributes=[
+                "base_transformer_",
+                "dx_outlook_transformer_",
+                "feature_names_out_",
+            ],
         )
-        base_features = all_features_v1(X)
+        base_features = self.base_transformer_.transform(X)
         dx_features = self.dx_outlook_transformer_.transform(X).loc[
             :, [DX_OUTLOOK_SECOND_FEATURE]
         ]

@@ -189,21 +189,29 @@ TF-IDFの語彙数より大きい次元数は指定できません。
 
 ## 使い方
 
-### 実験3・4採用後の特徴量セットを一括計算する
+### 3%未満の業界統合を含む特徴量セットを計算する
 
 ```python
 import pandas as pd
 
-from calc_features import all_features_v1
+from calc_features import AllFeaturesV1Transformer
 
-df = pd.read_csv("data/train.csv")
-features = all_features_v1(df)
+train = pd.read_csv("data/train.csv")
+valid = pd.read_csv("data/valid.csv")
+
+transformer = AllFeaturesV1Transformer()
+train_features = transformer.fit_transform(train)
+valid_features = transformer.transform(valid)
 ```
 
-`all_features_v1()` は、`dx_outlook.py` を除く5モジュールを一括計算し、実験3で
-除外した全行欠損特徴量8列と重複候補3列を除外します。業界は実験4-Dのルールに
-従い、`自動車・乗り物`、`IT`、`建設・工事`、`商社`だけを残し、`機械`を含む
-それ以外を`その他`に統合します。出力は19列です。
+`AllFeaturesV1Transformer` は、`dx_outlook.py` を除く5モジュールを一括計算し、
+実験3で除外した全行欠損特徴量8列と重複候補3列を除外します。業界は`fit`データ
+内の出現率が3%未満なら`その他`へ統合し、validation・testにも同じ保持ルールを
+適用します。出力は19列です。
+
+学習データ単体を計算する場合は`all_features_v1(train)`も利用できます。
+validation・testへデータごとにこの簡易関数を呼ぶと、それぞれの頻度で判定される
+ため、分割評価や予測では上記のtransformerを使用してください。
 
 ### v1とDX展望のSVD第2成分を結合する
 
@@ -219,8 +227,9 @@ test_features = transformer.transform(test)
 `AllFeaturesV2Transformer` は `all_features_v1` の19列に、`今後のDX展望`を
 名詞・動詞だけでTF-IDF化し、30次元SVDへ圧縮した第2成分
 `dx_outlook_svd_30_02` を加えた20列を返します。TF-IDFとSVDは `fit` に渡した
-データだけで学習されます。クロスバリデーションではfoldごとに新しい
-transformerを作成してください。
+データだけで学習されます。v1部分の3%業界統合も同じ学習データで決まり、
+validation・testには学習済みルールが適用されます。クロスバリデーションでは
+foldごとに新しいtransformerを作成してください。
 
 学習データ単体を手早く計算する場合は `all_features_v2(train)` も利用できます。
 検証・テストデータがある場合にデータごとにこの簡易関数を呼ぶと変換条件が
