@@ -14,8 +14,10 @@ from .motivation import (
 
 from .all_features_v1 import (
     EXCLUDED_FEATURE_COLUMNS,
-    RETAINED_INDUSTRIES,
+    INDUSTRY_MIN_FREQUENCY,
+    AllFeaturesV1Transformer,
     all_features_v1,
+    select_retained_industries,
 )
 
 from .all_features_v2 import (
@@ -45,8 +47,10 @@ __all__ = [
     "add_motivation_features",
     "calculate_motivation_features",
     "EXCLUDED_FEATURE_COLUMNS",
-    "RETAINED_INDUSTRIES",
+    "INDUSTRY_MIN_FREQUENCY",
+    "AllFeaturesV1Transformer",
     "all_features_v1",
+    "select_retained_industries",
     "ALL_FEATURES_V2_DX_N_COMPONENTS",
     "ALL_FEATURES_V2_DX_PARTS_OF_SPEECH",
     "DX_OUTLOOK_SECOND_FEATURE",
