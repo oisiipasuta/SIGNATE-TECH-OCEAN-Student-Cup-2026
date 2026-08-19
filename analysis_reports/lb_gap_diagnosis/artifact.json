@@ -1,0 +1,336 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "CVとLBの乖離診断",
+    "description": "exp_mix/exp05のnested OOF F1とPublic LBの差を診断するレポート。",
+    "generatedAt": "2026-08-19T21:00:00+09:00",
+    "filters": [],
+    "cards": [],
+    "charts": [
+      {
+        "id": "top_k_cv_vs_lb",
+        "title": "Top-k探索のCVスコアとPublic LB",
+        "subtitle": "同じouter CVで16構成を比較し、最大のk=2を採用。Public LBはユーザー報告の概数。",
+        "type": "line",
+        "dataset": "top_k_scores",
+        "sourceId": "top_k_chart_sql",
+        "valueFormat": "number",
+        "encodings": {
+          "x": {
+            "field": "k",
+            "type": "ordinal",
+            "label": "累積追加特徴量数 k"
+          },
+          "y": {
+            "field": "f1",
+            "type": "quantitative",
+            "label": "F1"
+          },
+          "color": {
+            "field": "series",
+            "type": "nominal",
+            "label": "評価面"
+          },
+          "tooltip": [
+            {
+              "field": "f1",
+              "type": "quantitative",
+              "label": "F1",
+              "format": "number"
+            }
+          ]
+        }
+      }
+    ],
+    "tables": [
+      {
+        "id": "driver_assessment",
+        "title": "原因候補の検証結果",
+        "subtitle": "強い根拠がある順。『主因ではない』は影響ゼロを意味しない。",
+        "dataset": "driver_assessment",
+        "sourceId": "driver_table_sql",
+        "density": "spacious",
+        "defaultSort": {
+          "field": "rank",
+          "direction": "asc"
+        },
+        "columns": [
+          {
+            "field": "rank",
+            "label": "順位",
+            "type": "number"
+          },
+          {
+            "field": "driver",
+            "label": "原因候補",
+            "type": "text"
+          },
+          {
+            "field": "assessment",
+            "label": "判定",
+            "type": "text"
+          },
+          {
+            "field": "evidence",
+            "label": "根拠",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "top_k_chart_sql",
+        "label": "Top-k CVとPublic LBの比較データ",
+        "path": "analysis_reports/lb_gap_diagnosis/artifact.json",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT * FROM (VALUES (0, 'Nested OOF CV', 0.7744), (1, 'Nested OOF CV', 0.7804), (2, 'Nested OOF CV', 0.8063), (3, 'Nested OOF CV', 0.7901), (4, 'Nested OOF CV', 0.7927), (5, 'Nested OOF CV', 0.7958), (6, 'Nested OOF CV', 0.7907), (7, 'Nested OOF CV', 0.7938), (8, 'Nested OOF CV', 0.7837), (9, 'Nested OOF CV', 0.8010), (10, 'Nested OOF CV', 0.7918), (11, 'Nested OOF CV', 0.7949), (12, 'Nested OOF CV', 0.7947), (13, 'Nested OOF CV', 0.8000), (14, 'Nested OOF CV', 0.8000), (15, 'Nested OOF CV', 0.7989), (0, 'Public LB（概数）', 0.7700), (1, 'Public LB（概数）', 0.7700), (2, 'Public LB（概数）', 0.7700), (3, 'Public LB（概数）', 0.7700), (4, 'Public LB（概数）', 0.7700), (5, 'Public LB（概数）', 0.7700), (6, 'Public LB（概数）', 0.7700), (7, 'Public LB（概数）', 0.7700), (8, 'Public LB（概数）', 0.7700), (9, 'Public LB（概数）', 0.7700), (10, 'Public LB（概数）', 0.7700), (11, 'Public LB（概数）', 0.7700), (12, 'Public LB（概数）', 0.7700), (13, 'Public LB（概数）', 0.7700), (14, 'Public LB（概数）', 0.7700), (15, 'Public LB（概数）', 0.7700)) AS t(k, series, f1) ORDER BY series, k",
+          "description": "exp08の記録値とユーザー報告のPublic LB概数をチャート用のreviewed rowsへ整形する。"
+        }
+      },
+      {
+        "id": "driver_table_sql",
+        "label": "原因候補の検証結果",
+        "path": "analysis_reports/lb_gap_diagnosis/artifact.json",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT * FROM (VALUES (1, '同一CVで16構成を選択', '主因・強い根拠', 'k=0〜15を同じouter CVで比較し、最大のk=2を採用。outer評価がモデル選択へ流用された。'), (2, '小標本・Public subsetの揺れ', '有力', 'train 742件・陽性179件。OOF F1 0.8072のブートストラップ95%区間は0.7619〜0.8477。'), (3, '閾値の本番移植', '主因ではない', '提出0.247に対してOOF最適は0.255。F1差は0.0042で、LB差0.036より小さい。'), (4, '選択2特徴の単変量シフト', '明確な証拠なし', 'train/test SMDは0.074と-0.042、KS p値は0.64と0.69。大きな単変量差は観測されない。')) AS t(rank, driver, assessment, evidence) ORDER BY rank",
+          "description": "診断結果を強い根拠がある順に整形する。"
+        }
+      },
+      {
+        "id": "diagnostic_script",
+        "label": "CV–LB差の診断スクリプト",
+        "path": "analysis_reports/lb_gap_diagnosis/analyze.py",
+        "query": {
+          "engine": "local-shell",
+          "language": "shell",
+          "sql": "python analysis_reports/lb_gap_diagnosis/analyze.py",
+          "description": "train/test分布、OOF閾値感度、ブートストラップ区間、提出予測陽性率を再計算する。"
+        }
+      },
+      {
+        "id": "exp08_source",
+        "label": "組織図特徴量の累積Top-k実験",
+        "path": "experiments/exp_tree_of_corp/exp08.py",
+        "query": {
+          "engine": "filesystem",
+          "language": "python",
+          "sql": "python experiments/exp_tree_of_corp/exp08.py",
+          "description": "同一outer CV上で16構成を比較する。"
+        }
+      },
+      {
+        "id": "submission5_source",
+        "label": "exp05提出生成コード",
+        "path": "submission5.py",
+        "query": {
+          "engine": "filesystem",
+          "language": "python",
+          "sql": "python submission5.py",
+          "description": "閾値0.247で提出予測を生成する。"
+        }
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# CVとLBの乖離診断"
+      },
+      {
+        "id": "executive_summary",
+        "type": "markdown",
+        "body": "## Executive Summary\n\n- **主因は、同じCVを繰り返し見て最良構成を選んだことです。** exp08は同じouter 5-fold上でk=0〜15の16構成を比較し、最大のk=2（0.8063）を採用しました。各モデルの閾値選択はリークしていませんが、モデル選択にouter検証結果を使ったため、採用スコアには選択バイアスがあります。\n- **LB 0.77は、小標本の揺れとしても十分起こり得ます。** trainは742件・陽性179件で、提出閾値0.247におけるOOF F1 0.8072のブートストラップ95%区間は0.7619〜0.8477でした。\n- **閾値と選択2特徴の単純なtrain/test差は主因ではなさそうです。** OOF最適閾値は0.255で提出値0.247に近く、DX変革組織有無と平均分岐数のSMDはそれぞれ0.074、-0.042でした。",
+        "sourceId": "diagnostic_script"
+      },
+      {
+        "id": "selection_bias",
+        "type": "markdown",
+        "body": "## 0.8063は独立な検証値ではない\n\n**k=2は、未知データで確認する前に同じouter CVの最大値として選ばれています。** さらに組織図特徴の順位も同じデータ由来の重要度を使っており、実験系列全体でも固定seedの同じ分割を繰り返し参照しています。exp05がexp08の0.8063を再現したことはコード再現性の確認にはなりますが、独立な汎化性能の再検証にはなりません。\n\nしたがって、CV 0.8063とLB約0.77の差0.036は、モデルが急に壊れたというより、探索後の最大CV値を期待値として扱ったことが大きいと判断します。",
+        "sourceId": "diagnostic_script"
+      },
+      {
+        "id": "top_k_chart",
+        "type": "chart",
+        "chartId": "top_k_cv_vs_lb",
+        "layout": "full"
+      },
+      {
+        "id": "chart_interpretation",
+        "type": "markdown",
+        "body": "**図の読み方:** k=2のピークは隣接構成へ滑らかに続かず、k=3では0.7901へ低下します。16候補の最大値だけを採る手順では、このような局所ピークを偶然拾いやすくなります。Public LBは探索に使っていない別標本なので、ピークが再現しないのは自然です。"
+      },
+      {
+        "id": "other_drivers",
+        "type": "markdown",
+        "body": "## 閾値と単純な分布差では説明し切れない\n\n**提出閾値0.247はOOF上で妥当でした。** 同一OOF確率に対する最適値は0.255で、F1は0.8114。0.247でも0.8072なので、閾値平均の取り方だけで0.036のLB差を説明するのは難しいです。\n\n**選択2特徴にも大きな単変量シフトはありませんでした。** DX変革組織有無のtrain/test SMDは0.074、平均分岐数は-0.042で、KS検定p値も0.64と0.69でした。ただし、全特徴の同時分布やラベル条件付き関係の変化までは否定できません。",
+        "sourceId": "diagnostic_script"
+      },
+      {
+        "id": "driver_table",
+        "type": "table",
+        "tableId": "driver_assessment",
+        "layout": "full"
+      },
+      {
+        "id": "recommendations",
+        "type": "markdown",
+        "body": "## 次の実験では評価系を先に固定する\n\n1. **特徴量・k・モデルを選ぶCVと、最終性能を測る評価を分離する。** 可能なら外側holdoutを最後まで見ない。全データを使うなら、k選択までinner CVへ入れた完全nested CVにする。\n2. **単一seedの最高値ではなく、複数seedの反復CV平均とばらつきで採否を決める。** 目安として3〜5 seedを使い、平均改善が標準誤差を上回る候補だけを残す。\n3. **提出はfoldモデルの確率平均を使う。** 単一の全量学習モデルより分散を抑えやすく、閾値はOOF確率から一つ選ぶ。0.247は悪くないため、優先度は評価系の修正より低い。\n4. **LBは確認用に限定し、同じPublic LBへ適応し過ぎない。** 実験ログへCV平均・seed間標準偏差・Public LBを並べ、LB差が再現する候補を優先する。"
+      },
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "body": "## 追加で確認したいこと\n\n- Public LBがtest 800件のうち何件で計算されているか。公開部分が小さいほど0.77への振れは大きくなる。\n- submission3〜6の実LB履歴。複数提出でCV順位とLB順位が一貫して逆転しているなら、評価分布またはPublic subsetへのシフトを追加調査する。\n- Public subsetの陽性率。F1は陽性率と閾値に敏感なため、trainの陽性率24.1%と異なる場合は予測陽性率27.8%が過大になり得る。"
+      },
+      {
+        "id": "caveats",
+        "type": "markdown",
+        "body": "## 前提と限界\n\n- Public LB約0.77はユーザー報告の概数で、コンペ側の評価対象件数・正解ラベル・陽性率は取得できない。\n- ブートストラップ区間は固定したOOF予測に対する標本変動であり、16構成から最大値を選んだ不確実性を含まない。そのため実際の選択後不確実性はさらに大きい可能性がある。\n- train/test差の確認は選択した2特徴の単変量分布が中心で、全特徴の同時分布や概念ドリフトを完全には検証していない。"
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-08-19T21:00:00+09:00",
+    "status": "ready",
+    "datasets": {
+      "top_k_scores": [
+        {"k": 0, "series": "Nested OOF CV", "f1": 0.7744},
+        {"k": 1, "series": "Nested OOF CV", "f1": 0.7804},
+        {"k": 2, "series": "Nested OOF CV", "f1": 0.8063},
+        {"k": 3, "series": "Nested OOF CV", "f1": 0.7901},
+        {"k": 4, "series": "Nested OOF CV", "f1": 0.7927},
+        {"k": 5, "series": "Nested OOF CV", "f1": 0.7958},
+        {"k": 6, "series": "Nested OOF CV", "f1": 0.7907},
+        {"k": 7, "series": "Nested OOF CV", "f1": 0.7938},
+        {"k": 8, "series": "Nested OOF CV", "f1": 0.7837},
+        {"k": 9, "series": "Nested OOF CV", "f1": 0.8010},
+        {"k": 10, "series": "Nested OOF CV", "f1": 0.7918},
+        {"k": 11, "series": "Nested OOF CV", "f1": 0.7949},
+        {"k": 12, "series": "Nested OOF CV", "f1": 0.7947},
+        {"k": 13, "series": "Nested OOF CV", "f1": 0.8000},
+        {"k": 14, "series": "Nested OOF CV", "f1": 0.8000},
+        {"k": 15, "series": "Nested OOF CV", "f1": 0.7989},
+        {"k": 0, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 1, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 2, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 3, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 4, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 5, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 6, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 7, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 8, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 9, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 10, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 11, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 12, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 13, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 14, "series": "Public LB（概数）", "f1": 0.7700},
+        {"k": 15, "series": "Public LB（概数）", "f1": 0.7700}
+      ],
+      "driver_assessment": [
+        {
+          "rank": 1,
+          "driver": "同一CVで16構成を選択",
+          "assessment": "主因・強い根拠",
+          "evidence": "k=0〜15を同じouter CVで比較し、最大のk=2を採用。outer評価がモデル選択へ流用された。"
+        },
+        {
+          "rank": 2,
+          "driver": "小標本・Public subsetの揺れ",
+          "assessment": "有力",
+          "evidence": "train 742件・陽性179件。OOF F1 0.8072のブートストラップ95%区間は0.7619〜0.8477。"
+        },
+        {
+          "rank": 3,
+          "driver": "閾値の本番移植",
+          "assessment": "主因ではない",
+          "evidence": "提出0.247に対してOOF最適は0.255。F1差は0.0042で、LB差0.036より小さい。"
+        },
+        {
+          "rank": 4,
+          "driver": "選択2特徴の単変量シフト",
+          "assessment": "明確な証拠なし",
+          "evidence": "train/test SMDは0.074と-0.042、KS p値は0.64と0.69。大きな単変量差は観測されない。"
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "top_k_chart_sql",
+      "query": {
+        "engine": "duckdb",
+        "language": "sql",
+        "sql": "SELECT * FROM (VALUES (0, 'Nested OOF CV', 0.7744), (1, 'Nested OOF CV', 0.7804), (2, 'Nested OOF CV', 0.8063), (3, 'Nested OOF CV', 0.7901), (4, 'Nested OOF CV', 0.7927), (5, 'Nested OOF CV', 0.7958), (6, 'Nested OOF CV', 0.7907), (7, 'Nested OOF CV', 0.7938), (8, 'Nested OOF CV', 0.7837), (9, 'Nested OOF CV', 0.8010), (10, 'Nested OOF CV', 0.7918), (11, 'Nested OOF CV', 0.7949), (12, 'Nested OOF CV', 0.7947), (13, 'Nested OOF CV', 0.8000), (14, 'Nested OOF CV', 0.8000), (15, 'Nested OOF CV', 0.7989), (0, 'Public LB（概数）', 0.7700), (1, 'Public LB（概数）', 0.7700), (2, 'Public LB（概数）', 0.7700), (3, 'Public LB（概数）', 0.7700), (4, 'Public LB（概数）', 0.7700), (5, 'Public LB（概数）', 0.7700), (6, 'Public LB（概数）', 0.7700), (7, 'Public LB（概数）', 0.7700), (8, 'Public LB（概数）', 0.7700), (9, 'Public LB（概数）', 0.7700), (10, 'Public LB（概数）', 0.7700), (11, 'Public LB（概数）', 0.7700), (12, 'Public LB（概数）', 0.7700), (13, 'Public LB（概数）', 0.7700), (14, 'Public LB（概数）', 0.7700), (15, 'Public LB（概数）', 0.7700)) AS t(k, series, f1) ORDER BY series, k",
+        "description": "exp08の記録値とユーザー報告のPublic LB概数をチャート用に整形する。"
+      }
+    },
+    {
+      "id": "driver_table_sql",
+      "query": {
+        "engine": "duckdb",
+        "language": "sql",
+        "sql": "SELECT * FROM (VALUES (1, '同一CVで16構成を選択', '主因・強い根拠', 'k=0〜15を同じouter CVで比較し、最大のk=2を採用。outer評価がモデル選択へ流用された。'), (2, '小標本・Public subsetの揺れ', '有力', 'train 742件・陽性179件。OOF F1 0.8072のブートストラップ95%区間は0.7619〜0.8477。'), (3, '閾値の本番移植', '主因ではない', '提出0.247に対してOOF最適は0.255。F1差は0.0042で、LB差0.036より小さい。'), (4, '選択2特徴の単変量シフト', '明確な証拠なし', 'train/test SMDは0.074と-0.042、KS p値は0.64と0.69。大きな単変量差は観測されない。')) AS t(rank, driver, assessment, evidence) ORDER BY rank",
+        "description": "診断結果を根拠が強い順に整形する。"
+      }
+    },
+    {
+      "id": "diagnostic_script",
+      "query": {
+        "engine": "local-shell",
+        "language": "shell",
+        "sql": "python analysis_reports/lb_gap_diagnosis/analyze.py",
+        "description": "train/test分布、OOF閾値感度、ブートストラップ区間、提出予測陽性率を再計算する。Public LB 0.77はユーザー報告の概数として入力。",
+        "tables_used": [
+          "data/train.csv",
+          "data/test.csv",
+          "experiments/exp_tree_of_corp/exp08.py",
+          "submission5.py"
+        ],
+        "filters": [
+          "StratifiedKFold=5, shuffle=True, random_state=42",
+          "bootstrap=5000, random_state=42"
+        ],
+        "metric_definitions": [
+          "Nested OOF F1: outer validation予測を結合して算出した二値F1。",
+          "Public LB: ユーザーが報告した約0.77のSIGNATE Public Leaderboard F1。",
+          "SMD: trainとtestの平均差をpooled standard deviationで標準化。"
+        ],
+        "executed_at": "2026-08-19T20:50:00+09:00"
+      }
+    },
+    {
+      "id": "exp08_source",
+      "query": {
+        "engine": "filesystem",
+        "language": "python",
+        "sql": "python experiments/exp_tree_of_corp/exp08.py",
+        "description": "同一outer CV上でk=0〜15の16構成を比較し、最大nested OOF F1のkを選択する実験。",
+        "tables_used": [
+          "data/train.csv"
+        ]
+      }
+    },
+    {
+      "id": "submission5_source",
+      "query": {
+        "engine": "filesystem",
+        "language": "python",
+        "sql": "python submission5.py",
+        "description": "全trainでexp05を学習し、閾値0.247でtestを二値化する提出生成コード。",
+        "tables_used": [
+          "data/train.csv",
+          "data/test.csv",
+          "data/sample_submit.csv"
+        ]
+      }
+    }
+  ]
+}

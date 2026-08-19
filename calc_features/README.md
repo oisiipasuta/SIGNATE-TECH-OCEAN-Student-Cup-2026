@@ -150,8 +150,8 @@ DX 導入の障壁と、既存施策への満足・成果実感を表す6特徴�
 `今後のDX展望` の自由記述を次の順に数値特徴量へ変換します。
 
 1. MeCab（辞書は `unidic-lite`）で日本語を形態素解析
-2. 名詞、動詞、形容詞・形状詞、副詞だけを抽出
-3. 抽出語のTF-IDFを計算
+2. 指定した品詞（既定は名詞、動詞、形容詞・形状詞、副詞）だけを抽出
+3. 抽出語の単語n-gramを作り、TF-IDFを計算（既定はunigram）
 4. TruncatedSVDで5、10、30次元のいずれかへ圧縮
 
 既定値は30次元です。出力列名は、たとえば10次元なら
@@ -186,6 +186,68 @@ TF-IDFの語彙数より大きい次元数は指定できません。
 抽出品詞は `target_parts_of_speech` で変更できます。既定値は従来どおり
 名詞・動詞・形容詞・形状詞・副詞です。たとえば名詞だけを使う場合は、
 `DXOutlookTfidfSVD(target_parts_of_speech=("名詞",))` と指定します。
+
+単語n-gramは `ngram_range=(最小n, 最大n)` で変更できます。MeCabで分割し、
+指定品詞だけを残したトークン列に対してn-gramを作ります。たとえば名詞・動詞の
+unigramとbigramを両方使う場合は次のように指定します。
+
+```python
+transformer = DXOutlookTfidfSVD(
+    n_components=30,
+    target_parts_of_speech=("名詞", "動詞"),
+    ngram_range=(1, 2),
+)
+```
+
+助詞を含むbigramを試す場合は、たとえば
+`target_parts_of_speech=("名詞", "助詞", "動詞")`、`ngram_range=(2, 2)`
+と指定できます。`calculate_dx_outlook_features` にも同じ引数を渡せます。
+
+unigramとbigramを別々のTF-IDF・SVD空間へ変換して結合する場合は、
+`DXOutlookMultiNgramTfidfSVD` を使います。`min_df` は各チャネルへ独立に
+適用されます。次の例では2文書未満にしか現れない語・bigramを除外します。
+
+```python
+from calc_features import DXOutlookMultiNgramTfidfSVD
+
+transformer = DXOutlookMultiNgramTfidfSVD(
+    n_components=30,
+    target_parts_of_speech=("名詞",),
+    min_df=2,
+)
+train_features = transformer.fit_transform(train_df)
+valid_features = transformer.transform(valid_df)
+print(transformer.vocabulary_counts_)
+```
+
+クロスバリデーションでは、各学習foldごとに新しい変換器を作成してください。
+
+### ラベル非参照のDX展望辞書v1
+
+`dx_outlook_dictionary.py` には、教育、外部教育、拡大型、慎重型、維持型、
+抑制型、課題型の7軸からなる `DX_OUTLOOK_DICTIONARY_V1` があります。
+辞書は学習データの「今後のDX展望」本文だけから作成し、購入フラグは参照して
+いません。実験開始後の誤変更を防ぐため、カテゴリのmappingは読み取り専用です。
+
+空白、全角・半角、英字の大文字・小文字を正規化して部分一致を確認できます。
+
+```python
+from calc_features import (
+    calculate_dx_outlook_dictionary_features,
+    find_dx_outlook_dictionary_matches,
+    profile_dx_outlook_dictionary,
+)
+
+matches = find_dx_outlook_dictionary_matches(text)
+profile = profile_dx_outlook_dictionary(train_df["今後のDX展望"])
+features = calculate_dx_outlook_dictionary_features(train_df)
+```
+
+`profile_dx_outlook_dictionary` は目的変数を引数に取らず、表現ごとの文書頻度、
+文書率、総出現回数だけを返します。辞書を変更する場合はv1を上書きせず、別の
+バージョンとして追加してください。`calculate_dx_outlook_dictionary_features` は
+7カテゴリそれぞれについて、一致した辞書表現の種類数と総出現回数の計14列を
+返します。
 
 ## 使い方
 
@@ -234,6 +296,35 @@ foldごとに新しいtransformerを作成してください。
 学習データ単体を手早く計算する場合は `all_features_v2(train)` も利用できます。
 検証・テストデータがある場合にデータごとにこの簡易関数を呼ぶと変換条件が
 異なるため、上記のtransformerを使用してください。
+
+### 未使用アンケートを加えたv3特徴量を計算する
+
+```python
+from calc_features import AllFeaturesV3Transformer
+
+transformer = AllFeaturesV3Transformer()
+train_features = transformer.fit_transform(train)
+valid_features = transformer.transform(valid)
+test_features = transformer.transform(test)
+```
+
+`AllFeaturesV3Transformer`はv2の20列に、v2の最終出力へ含まれない
+`アンケート３`、`アンケート６`、`アンケート１０`を加えた23列を返します。
+アンケートは1～5以外を欠損として扱います。検証・testを変換するときは、
+v2内部の業界統合・TF-IDF・SVDを学習データだけでfitするため、同じtransformerの
+`transform`を使用してください。
+
+`AllFeaturesV4Transformer`はv3の23列に、組織ノード数、階層、分岐、デジタル体制、
+研究開発・生産・海外・調達などの汎用組織図15特徴を加えた38列を返します。
+`DX推進室完全一致フラグ`は含みません。v3内部の学習処理は、同じtransformerへ
+渡した学習データだけでfitされます。
+
+`AllFeaturesV5Transformer`はv3の23列に、累積Top-k実験で選択した
+`DX変革組織有無`と`平均分岐数`だけを加えた25列を返します。検証・testには、
+学習データでfitした同じtransformerを使用してください。
+
+`AllFeaturesV6Transformer`はv3の23列に、`DX変革組織有無`だけを加えた
+24列を返します。組織図Top-2版から`平均分岐数`を除いた単一特徴版です。
 
 ### Python から特徴量だけを計算する
 
@@ -304,5 +395,9 @@ python -m calc_features.calculate data/train.csv calc_features/train_features.cs
 | `dx_outlook.py` | MeCab + TF-IDF + TruncatedSVDによる今後のDX展望特徴量 |
 | `all_features_v1.py` | 実験3・4採用後の19特徴量 |
 | `all_features_v2.py` | v1の19列とDX展望SVD第2成分を結合した20特徴量 |
+| `all_features_v3.py` | v2へアンケート3・6・10を加えた23特徴量 |
+| `all_features_v4.py` | v3へ汎用組織図15特徴を加えた38特徴量 |
+| `all_features_v5.py` | v3へ選択済み組織図Top-2特徴を加えた25特徴量 |
+| `all_features_v6.py` | v3へDX変革組織有無だけを加えた24特徴量 |
 | `__init__.py` | パッケージ直下に公開する関数・定数の定義 |
 | `test_*.py` | 一部特徴量の単体テスト |
