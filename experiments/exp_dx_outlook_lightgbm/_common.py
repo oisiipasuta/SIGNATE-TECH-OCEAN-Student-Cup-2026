@@ -72,11 +72,15 @@ def load_data(train_path: Path) -> tuple[pd.DataFrame, pd.Series, list[str]]:
     return train[[TEXT_COLUMN]].copy(), train[TARGET_COLUMN].astype(int), excluded
 
 
-def build_text_transformer(parts_of_speech: tuple[str, ...]) -> DXOutlookTfidfSVD:
+def build_text_transformer(
+    parts_of_speech: tuple[str, ...],
+    ngram_range: tuple[int, int] = (1, 1),
+) -> DXOutlookTfidfSVD:
     """各fold専用のMeCab + TF-IDF + SVD変換器を作る。"""
     return DXOutlookTfidfSVD(
         **TFIDF_SVD_PARAMS,
         target_parts_of_speech=parts_of_speech,
+        ngram_range=ngram_range,
     )
 
 
@@ -121,6 +125,7 @@ def calculate_inner_threshold(
     parts_of_speech: tuple[str, ...],
     seed: int,
     feature_columns: tuple[str, ...] | None,
+    ngram_range: tuple[int, int],
 ) -> tuple[float, float]:
     """外側学習データ内のinner OOF予測だけで閾値を選ぶ。"""
     inner_cv = StratifiedKFold(
@@ -135,7 +140,7 @@ def calculate_inner_threshold(
         X_valid = X.iloc[inner_valid_index]
         y_train = y.iloc[inner_train_index]
 
-        transformer = build_text_transformer(parts_of_speech)
+        transformer = build_text_transformer(parts_of_speech, ngram_range)
         transformed_train = select_transformed_features(
             transformer.fit_transform(X_train), feature_columns
         )
@@ -156,6 +161,7 @@ def run_nested_cv(
     y: pd.Series,
     parts_of_speech: tuple[str, ...],
     feature_columns: tuple[str, ...] | None,
+    ngram_range: tuple[int, int],
 ) -> ExperimentResult:
     """固定outer分割で評価し、未見foldだけからOOF指標を作る。"""
     outer_cv = StratifiedKFold(
@@ -183,8 +189,9 @@ def run_nested_cv(
             parts_of_speech,
             seed=RANDOM_STATE + fold + 1,
             feature_columns=feature_columns,
+            ngram_range=ngram_range,
         )
-        transformer = build_text_transformer(parts_of_speech)
+        transformer = build_text_transformer(parts_of_speech, ngram_range)
         transformed_train = select_transformed_features(
             transformer.fit_transform(X_train), feature_columns
         )
@@ -243,9 +250,10 @@ def run_experiment(
     train_path: Path,
     parts_of_speech: tuple[str, ...],
     feature_columns: tuple[str, ...] | None = None,
+    ngram_range: tuple[int, int] = (1, 1),
 ) -> ExperimentResult:
     X, y, excluded = load_data(train_path)
-    result = run_nested_cv(X, y, parts_of_speech, feature_columns)
+    result = run_nested_cv(X, y, parts_of_speech, feature_columns, ngram_range)
     result.excluded_all_missing = excluded
     return result
 

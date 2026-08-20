@@ -25,6 +25,10 @@ except ImportError:  # pragma: no cover - 同上。
 
 DX_OUTLOOK_COLUMN = "今後のDX展望"
 DX_OUTLOOK_SVD_COMPONENTS = (5, 10, 30)
+DX_OUTLOOK_NGRAM_CHANNELS = (
+    ("unigram", (1, 1)),
+    ("bigram", (2, 2)),
+)
 
 # 「形容詞・形状詞」は UniDic では別々の品詞として返されるため、両方を含める。
 TARGET_PARTS_OF_SPEECH = frozenset(
@@ -37,14 +41,26 @@ TARGET_PARTS_OF_SPEECH = frozenset(
     }
 )
 
-# 品詞アブレーションなどで指定ミスを防ぐため、UniDicの対象候補を公開する。
+# 品詞アブレーションなどで指定ミスを防ぐため、UniDicの大分類を公開する。
+# 既定では内容語だけを使うが、助詞などを含むn-gramも実験できるようにする。
 SUPPORTED_PARTS_OF_SPEECH = frozenset(
     {
         "名詞",
+        "代名詞",
         "動詞",
         "形容詞",
         "形状詞",
+        "連体詞",
         "副詞",
+        "接続詞",
+        "感動詞",
+        "助動詞",
+        "助詞",
+        "接頭辞",
+        "接尾辞",
+        "記号",
+        "補助記号",
+        "空白",
     }
 )
 
@@ -73,6 +89,7 @@ class DXOutlookTfidfSVD(BaseEstimator, TransformerMixin):
         *,
         text_column: str = DX_OUTLOOK_COLUMN,
         target_parts_of_speech: frozenset[str] | tuple[str, ...] = TARGET_PARTS_OF_SPEECH,
+        ngram_range: tuple[int, int] = (1, 1),
         min_df: int | float = 1,
         max_features: int | None = None,
         random_state: int = 42,
@@ -80,6 +97,7 @@ class DXOutlookTfidfSVD(BaseEstimator, TransformerMixin):
         self.n_components = n_components
         self.text_column = text_column
         self.target_parts_of_speech = target_parts_of_speech
+        self.ngram_range = ngram_range
         self.min_df = min_df
         self.max_features = max_features
         self.random_state = random_state
@@ -150,6 +168,17 @@ class DXOutlookTfidfSVD(BaseEstimator, TransformerMixin):
         unsupported = selected_parts - SUPPORTED_PARTS_OF_SPEECH
         if unsupported:
             raise ValueError(f"未対応の品詞が指定されました: {sorted(unsupported)}")
+        if (
+            not isinstance(self.ngram_range, tuple)
+            or len(self.ngram_range) != 2
+            or not all(isinstance(value, int) for value in self.ngram_range)
+            or self.ngram_range[0] <= 0
+            or self.ngram_range[0] > self.ngram_range[1]
+        ):
+            raise ValueError(
+                "ngram_range は (最小n, 最大n) の形式で、"
+                "1 <= 最小n <= 最大n となる整数を指定してください。"
+            )
 
         texts, _ = self._extract_texts(X)
         self._tagger = None
@@ -157,6 +186,7 @@ class DXOutlookTfidfSVD(BaseEstimator, TransformerMixin):
             tokenizer=self._tokenize,
             token_pattern=None,
             lowercase=False,
+            ngram_range=self.ngram_range,
             min_df=self.min_df,
             max_features=self.max_features,
         )
@@ -191,9 +221,107 @@ class DXOutlookTfidfSVD(BaseEstimator, TransformerMixin):
         return self.feature_names_out_.copy()
 
 
+class DXOutlookMultiNgramTfidfSVD(BaseEstimator, TransformerMixin):
+    """複数の単語n-gramを別々にTF-IDF・SVD化して結合する。
+
+    各チャネルは同じ学習データだけで独立にfitされる。``min_df`` は各
+    チャネルの文書頻度に適用されるため、CVではfoldごとに新しい変換器を
+    作成し、学習foldだけを ``fit`` する。
+    """
+
+    def __init__(
+        self,
+        n_components: int = 30,
+        *,
+        text_column: str = DX_OUTLOOK_COLUMN,
+        target_parts_of_speech: frozenset[str] | tuple[str, ...] = TARGET_PARTS_OF_SPEECH,
+        channels: tuple[tuple[str, tuple[int, int]], ...] = DX_OUTLOOK_NGRAM_CHANNELS,
+        min_df: int | float = 1,
+        max_features: int | None = None,
+        random_state: int = 42,
+    ) -> None:
+        self.n_components = n_components
+        self.text_column = text_column
+        self.target_parts_of_speech = target_parts_of_speech
+        self.channels = channels
+        self.min_df = min_df
+        self.max_features = max_features
+        self.random_state = random_state
+
+    def _validate_channels(self) -> None:
+        if not isinstance(self.channels, tuple) or not self.channels:
+            raise ValueError("channels は1チャネル以上指定してください。")
+        if any(not isinstance(channel, tuple) or len(channel) != 2 for channel in self.channels):
+            raise ValueError("各チャネルは (名前, ngram_range) で指定してください。")
+        names = [channel[0] for channel in self.channels]
+        if any(not isinstance(name, str) or not name for name in names):
+            raise ValueError("チャネル名は空でない文字列にしてください。")
+        if len(names) != len(set(names)):
+            raise ValueError("チャネル名は重複しないようにしてください。")
+
+    def fit(
+        self,
+        X: pd.DataFrame | pd.Series | Iterable[str],
+        y: Any = None,
+    ) -> "DXOutlookMultiNgramTfidfSVD":
+        del y
+        self._validate_channels()
+        self.transformers_: dict[str, DXOutlookTfidfSVD] = {}
+        self.vocabulary_counts_: dict[str, int] = {}
+        feature_names: list[str] = []
+
+        for channel_name, ngram_range in self.channels:
+            transformer = DXOutlookTfidfSVD(
+                n_components=self.n_components,
+                text_column=self.text_column,
+                target_parts_of_speech=self.target_parts_of_speech,
+                ngram_range=ngram_range,
+                min_df=self.min_df,
+                max_features=self.max_features,
+                random_state=self.random_state,
+            ).fit(X)
+            self.transformers_[channel_name] = transformer
+            self.vocabulary_counts_[channel_name] = len(
+                transformer.vectorizer_.get_feature_names_out()
+            )
+            feature_names.extend(
+                f"{channel_name}_svd_{index + 1:02d}"
+                for index in range(self.n_components)
+            )
+
+        self.feature_names_out_ = feature_names
+        return self
+
+    def transform(
+        self,
+        X: pd.DataFrame | pd.Series | Iterable[str],
+    ) -> pd.DataFrame:
+        check_is_fitted(
+            self,
+            attributes=["transformers_", "vocabulary_counts_", "feature_names_out_"],
+        )
+        frames: list[pd.DataFrame] = []
+        for channel_name, _ in self.channels:
+            transformed = self.transformers_[channel_name].transform(X).copy()
+            transformed.columns = [
+                f"{channel_name}_svd_{index + 1:02d}"
+                for index in range(self.n_components)
+            ]
+            frames.append(transformed)
+        return pd.concat(frames, axis=1)
+
+    def get_feature_names_out(self, input_features: Any = None) -> list[str]:
+        del input_features
+        check_is_fitted(self, attributes=["feature_names_out_"])
+        return self.feature_names_out_.copy()
+
+
 def calculate_dx_outlook_features(
     df: pd.DataFrame,
     n_components: int = 30,
+    *,
+    target_parts_of_speech: frozenset[str] | tuple[str, ...] = TARGET_PARTS_OF_SPEECH,
+    ngram_range: tuple[int, int] = (1, 1),
     **transformer_kwargs: Any,
 ) -> pd.DataFrame:
     """1つの学習DataFrameにfitし、DX展望のSVD特徴量を返す。
@@ -203,6 +331,8 @@ def calculate_dx_outlook_features(
     """
     transformer = DXOutlookTfidfSVD(
         n_components=n_components,
+        target_parts_of_speech=target_parts_of_speech,
+        ngram_range=ngram_range,
         **transformer_kwargs,
     )
     return transformer.fit_transform(df)
@@ -211,9 +341,11 @@ def calculate_dx_outlook_features(
 __all__ = [
     "DX_OUTLOOK_COLUMN",
     "DX_OUTLOOK_FEATURE_COLUMNS",
+    "DX_OUTLOOK_NGRAM_CHANNELS",
     "DX_OUTLOOK_SVD_COMPONENTS",
     "TARGET_PARTS_OF_SPEECH",
     "SUPPORTED_PARTS_OF_SPEECH",
+    "DXOutlookMultiNgramTfidfSVD",
     "DXOutlookTfidfSVD",
     "calculate_dx_outlook_features",
     "get_dx_outlook_feature_columns",
